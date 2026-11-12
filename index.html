@@ -753,7 +753,7 @@ function viewRooms(){
     <select data-chg="rfilter" data-k="kind" aria-label="النوع"><option value="">كل الأنواع</option>${Object.entries(ROOMKIND).map(([k,t])=>`<option value="${k}"${f.kind===k?' selected':''}>${t}</option>`).join('')}</select>
     <select data-chg="rfilter" data-k="state" aria-label="الحالة"><option value="">كل الحالات</option>${Object.entries(STATE_LABEL).map(([k,[t]])=>`<option value="${k}"${f.state===k?' selected':''}>${t}</option>`).join('')}</select>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>المكان</th><th>المبنى / الدور</th><th>النوع</th><th>الكراسي</th><th>السعات حسب الاستخدام</th><th>الحالة</th><th>الإشغال الأسبوعي</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>المكان</th><th>المبنى / الدور</th><th>النوع</th><th>أقصى عدد طلاب</th><th>السعات حسب الاستخدام</th><th>الحالة</th><th>الإشغال الأسبوعي</th></tr></thead><tbody>
   ${list.map(r=>`<tr class="click" data-act="openRoom" data-id="${r.id}" tabindex="0"><td><b>${esc(r.name)}</b>${r.dept?`<div class="meta">لقسم ${esc(r.dept)}</div>`:''}</td><td>${roomWhere(r)}</td><td>${ROOMKIND[r.kind]}</td><td class="num">${r.seats}${r.devices?`<div class="meta">أجهزة ${r.devices.working}/${r.devices.total}</div>`:''}</td><td>${capsSummary(r)}</td><td>${statePill(r)}${r.maintenance?`<div class="meta">لحد ${fmtDate(r.maintenance.to)}</div>`:''}</td><td class="num">${occ(r)} / ${DAYS.length*SLOTS.length}</td></tr>`).join('')||'<tr><td colspan="7" class="muted">مفيش أماكن بالفلتر ده.</td></tr>'}
   </tbody></table></div><p class="hint">* السعة محسوبة على عدد الأجهزة الشغالة.</p>`;
 }
@@ -862,7 +862,7 @@ function drawerRoom(r){
   <div class="drawer-body" id="drawer-body">
     ${r.maintenance?`<div class="badbox">صيانة من ${fmtDate(r.maintenance.from)} لحد ${fmtDate(r.maintenance.to)}: ${esc(r.maintenance.note)}</div>`:''}
     <div class="row-actions"><button class="btn sm" data-act="roomStatus" data-id="${r.id}">تغيير الحالة</button></div>
-    <dl class="kv"><dt>الكراسي</dt><dd class="num">${r.seats}</dd>${r.dept?`<dt>مخصص لـ</dt><dd>قسم ${esc(r.dept)}</dd>`:''}</dl>
+    <dl class="kv"><dt>أقصى عدد طلاب</dt><dd class="num">${r.seats}</dd>${r.dept?`<dt>مخصص لـ</dt><dd>قسم ${esc(r.dept)}</dd>`:''}</dl>
     <section><div class="sec-title">السعة حسب نوع الاستخدام</div><div class="tbl-wrap"><table><thead><tr><th>الاستخدام</th><th>من</th><th>إلى</th><th>الفعلية</th><th></th></tr></thead><tbody>
       ${Object.entries(r.caps).map(([k,[mn,mx]])=>{ const cap=roomCap(r,k); return `<tr><td>${esc(S.usage[k]||k)}</td><td><input type="number" min="0" style="width:72px" data-chg="cap" data-id="${r.id}" data-k="${k}" data-i="0" value="${mn}" aria-label="أقل سعة ${esc(S.usage[k])}"></td><td><input type="number" min="1" style="width:72px" data-chg="cap" data-id="${r.id}" data-k="${k}" data-i="1" value="${mx}" aria-label="أقصى سعة ${esc(S.usage[k])}"></td><td class="num">${cap.max}${cap.byDevices?' <span class="meta">(الأجهزة)</span>':''}</td><td><button class="btn sm ghost" data-act="delCap" data-id="${r.id}" data-k="${k}">حذف</button></td></tr>`; }).join('')}
     </tbody></table></div>
