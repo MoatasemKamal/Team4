@@ -174,7 +174,7 @@ const MODE={inperson:'حضوري',online:'أونلاين',hybrid:'حضوري - �
 const PTYPE={bachelor:'بكالوريوس (فرق)',credit:'ساعات معتمدة',external:'انتساب',pg:'دراسات عليا'};
 const ORD=['الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة'];
 /* Same equipment keys as the rooms system; the rooms system owns this list and sends updates. */
-let EQ={projector:'بروجكتور',mic:'مايك وسماعات',ac:'تكييف',internet:'إنترنت',smartboard:'سبورة ذكية',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',excel:'Microsoft Excel',spss:'SPSS',accsoft:'برنامج محاسبي (ERP)'};
+let EQ={projector:'بروجكتور',mic:'ميكروفون وسماعات',ac:'تكييف',internet:'إنترنت',smartboard:'سبورة ذكية',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',excel:'Microsoft Excel',spss:'SPSS',accsoft:'برنامج محاسبي (ERP)'};
 /* Menu grouped by workflow: this term's work first, then the bylaw (plans and courses), then setup. */
 const NAV_GROUPS=[
   {t:'الترم الحالي',items:[['offer','المواد حسب البرنامج والفرقة'],['outbox','الإرسال لنظام القاعات'],['load','أعباء التدريس']]},
@@ -182,7 +182,7 @@ const NAV_GROUPS=[
   {t:'الإعداد',items:[['master','البيانات الأساسية'],['settings','الإعدادات']]}
 ];
 const NAV=NAV_GROUPS.flatMap(g=>g.items);
-const VERSION='النسخة: 14 نوفمبر 20:00';
+const VERSION='النسخة: 14 نوفمبر 21:00';
 const PTYPE_ITEM={core:'إجبارية',elective:'اختيارية'};
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
@@ -432,24 +432,24 @@ function loadOf(pid){
 const overloaded=pid=>{ const p=person(pid); return loadOf(pid).hours>maxFor(p); };
 function issuesOf(o){
   const co=course(o.courseId), bad=[], warn=[], ss=sessionsOf(o);
-  if(!o.students) bad.push('عدد الطلاب مش متسجل');
-  for(const [k,x] of Object.entries(co.sessions)){ const w=weeksOf(x); if(w.to>S.term.weeks) bad.push(`خطة ال${KINDS[k]} بتخلص أسبوع ${w.to} والترم ${S.term.weeks} أسبوع`); }
+  if(!o.students) bad.push('عدد الطلاب غير مسجّل');
+  for(const [k,x] of Object.entries(co.sessions)){ const w=weeksOf(x); if(w.to>S.term.weeks) bad.push(`خطة ال${KINDS[k]} تنتهي في الأسبوع ${w.to} بينما مدة الترم ${S.term.weeks} أسبوعًا`); }
   const noStaff=ss.filter(s=>!s.instructor);
-  if(noStaff.length) bad.push(`${noStaff.length} حصة ملهاش محاضر`);
-  for(const k of Object.keys(co.sessions)) for(const q of co.reqs[k]||[]) if(q.mandatory&&!q.reason) bad.push(`${EQ[q.eq]} إلزامي في ال${KINDS[k]} من غير سبب`);
+  if(noStaff.length) bad.push(`${noStaff.length} حصة بلا محاضر`);
+  for(const k of Object.keys(co.sessions)) for(const q of co.reqs[k]||[]) if(q.mandatory&&!q.reason) bad.push(`${EQ[q.eq]} إلزامي في ال${KINDS[k]} دون سبب`);
   const sum=o.audiences.reduce((a,id)=>a+(cohort(id)?.students||0),0);
   const elec=isElective(o);
-  if(sum&&o.students!==sum&&!elec) warn.push(`عدد الطلاب (${o.students}) مختلف عن مجموع الجمهور (${sum})`);
-  if(elec) warn.push(`مادة اختيارية: عدد الطلاب (${o.students}) متوقع لحد ما التسجيل الفعلي يوصل`);
-  if(!inPlan(o)) warn.push('المادة مش في الخطة الدراسية للبرنامج والفرقة دي');
-  for(const k of Object.keys(co.sessions)) if(modeOf(o,k)==='hybrid') warn.push(`ال${KINDS[k]} حضوري - أونلاين: نظام القاعات هيضيف كاميرا ومايك ونت كمتطلبات إلزامية`);
+  if(sum&&o.students!==sum&&!elec) warn.push(`عدد الطلاب (${o.students}) لا يساوي مجموع طلاب المجموعات (${sum})`);
+  if(elec) warn.push(`مادة اختيارية: عدد الطلاب (${o.students}) تقديري حتى يصل التسجيل الفعلي`);
+  if(!inPlan(o)) warn.push('المادة ليست في الخطة الدراسية لهذا البرنامج والفرقة');
+  for(const k of Object.keys(co.sessions)) if(modeOf(o,k)==='hybrid') warn.push(`ال${KINDS[k]} حضوري - أونلاين: سيضيف نظام القاعات كاميرا وميكروفونًا وإنترنت كمتطلبات إلزامية`);
   for(const p of new Set(ss.map(s=>s.instructor).filter(Boolean))) if(overloaded(p)) warn.push(`${person(p).name} فوق الحد الأقصى للعبء`);
   return {bad,warn};
 }
 function sendState(o){
-  if(!o.offered) return ['مش متضافة للترم','off'];
-  if(!o.sent) return ['ماتبعتتش','acc'];
-  return o.sent===JSON.stringify(payload(o))?['اتبعتت لنظام القاعات','ok']:['اتغيرت بعد الإرسال','warn'];
+  if(!o.offered) return ['غير مضافة للترم','off'];
+  if(!o.sent) return ['لم تُرسل','acc'];
+  return o.sent===JSON.stringify(payload(o))?['أُرسلت إلى نظام القاعات','ok']:['تغيّرت بعد الإرسال','warn'];
 }
 function send(o){ if(issuesOf(o).bad.length) return false; o.sent=JSON.stringify(payload(o)); o.sentAt=stamp(); o.cancelledSent=false; S.lastSendAt=o.sentAt; return true; }
 function diffSent(o){
@@ -462,9 +462,9 @@ function diffSent(o){
     if(p.deliveryMode!==s.deliveryMode) out.push(`${r}: ${MODE[p.deliveryMode]} ← ${MODE[s.deliveryMode]}`);
     if((p.instructor&&p.instructor.id)!==(s.instructor&&s.instructor.id)) out.push(`${r}: المحاضر ${p.instructor?p.instructor.name:'—'} ← ${s.instructor?s.instructor.name:'—'}`);
     if(p.fromWeek!==s.fromWeek||p.toWeek!==s.toWeek) out.push(`${r}: الأسابيع ${p.fromWeek}–${p.toWeek} ← ${s.fromWeek}–${s.toWeek}`);
-    if(JSON.stringify(p.requirements)!==JSON.stringify(s.requirements)) out.push(`${r}: المتطلبات اتغيرت`);
+    if(JSON.stringify(p.requirements)!==JSON.stringify(s.requirements)) out.push(`${r}: تغيّرت المتطلبات`);
   }
-  for(const r of ma.keys()) if(!mb.has(r)) out.push(`حصة اتشالت: ${r}`);
+  for(const r of ma.keys()) if(!mb.has(r)) out.push(`حصة حُذفت: ${r}`);
   return out;
 }
 
@@ -502,13 +502,13 @@ function allocOf(o){
 const ALLOC_KIND={scheduled:'ok',online:'off',waiting:'bad',unscheduled:'bad',issue:'warn',cancelled:'off',pending:'acc',rejected:'bad',release:'warn'};
 function allocCell(o){
   if(!o.offered||!o.sent) return '<span class="meta">—</span>';
-  if(!ROOMS) return '<span class="meta">مستني نظام القاعات</span>';
-  const a=allocOf(o); if(!a.known) return '<span class="meta">لسه ماوصلش</span>';
+  if(!ROOMS) return '<span class="meta">بانتظار نظام القاعات</span>';
+  const a=allocOf(o); if(!a.known) return '<span class="meta">لم تصل بعد</span>';
   const n=s=>a.list.filter(x=>x.a&&x.a.state===s).length;
-  if(n('rejected')) return pill('طلب التوزيع اترفض','bad');
-  if(n('release')) return pill('مستني تأكيد الموظف','warn');
-  if(n('pending')) return pill(`${n('pending')} مقترح، مستني الاعتماد`,'acc');
-  return a.need?pill(`${a.done} / ${a.need} اتوزعت`,a.done===a.need?'ok':a.done?'warn':'bad'):pill('أونلاين','off');
+  if(n('rejected')) return pill('رُفض طلب التوزيع','bad');
+  if(n('release')) return pill('بانتظار تأكيد الموظف','warn');
+  if(n('pending')) return pill(`${n('pending')} مقترح، بانتظار الاعتماد`,'acc');
+  return a.need?pill(`${a.done} / ${a.need} وُزّعت`,a.done===a.need?'ok':a.done?'warn':'bad'):pill('أونلاين','off');
 }
 window.addEventListener('storage',e=>{ if(e.key===BUS_ROOMS){ ROOMS=store.get(BUS_ROOMS); adoptMaster(); render(); } });
 
@@ -539,9 +539,9 @@ function ask(o){
       e.preventDefault(); const vals={};
       const err=m=>{ const er=form.querySelector('.dlg-err'); er.hidden=false; er.textContent=m; };
       for(const f of o.fields||[]){
-        if(f.type==='checks'){ vals[f.id]=[...form.querySelectorAll(`[name="f-${f.id}"]:checked`)].map(x=>x.value); if(f.required&&!vals[f.id].length){ err(`اختار ${f.label}`); return; } continue; }
+        if(f.type==='checks'){ vals[f.id]=[...form.querySelectorAll(`[name="f-${f.id}"]:checked`)].map(x=>x.value); if(f.required&&!vals[f.id].length){ err(`اختر ${f.label}`); return; } continue; }
         const el=form.querySelector('#f-'+f.id); if(el.closest('[hidden]')){ vals[f.id]=''; continue; } vals[f.id]=el.value.trim();
-        if(f.required&&!vals[f.id]){ err(`اكتب ${f.label} عشان تكمل`); el.focus(); return; }
+        if(f.required&&!vals[f.id]){ err(`أدخل ${f.label} للمتابعة`); el.focus(); return; }
       }
       close(vals);
     };
@@ -554,7 +554,7 @@ function renderRail(){
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة المواد الدراسية</h1><small>${esc(S.university)} · ${esc(S.faculty.name)} · ${esc(S.term.name)}</small></div>`+
     `<nav aria-label="القائمة" style="display:contents">`+NAV_GROUPS.map(g=>`<div class="nav-group" role="presentation">${g.t}</div>`+g.items.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${k==='outbox'&&pending?`<span class="badge">${pending}</span>`:''}</a>`).join('')).join('')+
     `<a class="nav ext" href="../"><span>نظام القاعات والمعامل</span><span aria-hidden="true">↖</span></a></nav>`+
-    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح نظام القاعات من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">${VERSION}</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات غير متصل</span><span>افتح نظام القاعات من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">${VERSION}</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
 }
 function groupsSummary(o){
   const g=groupsOf(o), co=course(o.courseId);
@@ -593,49 +593,49 @@ function viewOffer(){
   const nElec=gaps.all.filter(g=>g.type==='elective').length, pick=pl.picks[pk];
   const gapRow=g=>{ const co=course(g.courseId); const scope=g.majors.has('*')?'كل الطلاب':[...g.majors].map(m=>esc(major(m).name)).join('، ');
     return `<tr><td><b>${esc(co.code)}</b> · ${esc(co.name)}</td><td>${pill(PTYPE_ITEM[g.type],g.type==='core'?'acc':'off')}</td><td class="meta">${scope}</td><td class="num">${co.credits}</td><td class="num">${g.aud.reduce((a,id)=>a+cohort(id).students,0)}</td><td>${g.prereq.length?g.prereq.map(x=>`<span class="tag">${esc(course(x).code)}</span>`).join(''):'<span class="meta">—</span>'}</td><td><button class="btn sm primary" data-act="planOffer" data-c="${g.courseId}">إضافة للترم</button></td></tr>`; };
-  const planPanel=gaps.all.length?(gaps.missing.length?`<section class="panel plan-gaps" aria-labelledby="h-gap" style="margin-bottom:16px"><div class="inline" style="justify-content:space-between"><h3 id="h-gap" style="margin:0">مقترح من الخطة الدراسية · ${gaps.missing.length} مادة لسه ماتضافتش للترم</h3>${gaps.missing.some(g=>g.type==='core')?`<button class="btn sm primary" data-act="planOfferCore">إضافة كل الإجباري للترم (${gaps.missing.filter(g=>g.type==='core').length})</button>`:''}</div>
-    <p class="hint" style="margin:4px 0 10px">${esc(pl.bylaw||'الخطة الدراسية')} · ${esc(levelLabel(p,u.level))} · ${semName(S.term.semester)}.${nElec?` الاختياري: الطالب بياخد ${pick||'؟'} من ${nElec}، فضيف للترم اللي هيتفتح بس.`:''} النظام بيقترح، وانت اللي بتضيف.</p>
-    <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>النوع</th><th>لمين</th><th>س.م</th><th>الطلاب</th><th>متطلب سابق</th><th></th></tr></thead><tbody>${gaps.missing.map(gapRow).join('')}</tbody></table></div></section>`
-    :`<div class="okbox" style="margin-bottom:16px">كل مواد الخطة الدراسية (${gaps.all.length}) للمجموعات دي في ${semName(S.term.semester)} اتضافت للترم.</div>`)
-    :`<div class="infobox" style="margin-bottom:16px">مفيش مواد في الخطة الدراسية للمجموعات دي في ${semName(S.term.semester)}. <a href="#plans">عرّف الخطة</a></div>`;
+  const planPanel=gaps.all.length?(gaps.missing.length?`<section class="panel plan-gaps" aria-labelledby="h-gap" style="margin-bottom:16px"><div class="inline" style="justify-content:space-between"><h3 id="h-gap" style="margin:0">مقترح من الخطة الدراسية · ${gaps.missing.length} مادة لم تُضف إلى الترم بعد</h3>${gaps.missing.some(g=>g.type==='core')?`<button class="btn sm primary" data-act="planOfferCore">إضافة كل الإجباري للترم (${gaps.missing.filter(g=>g.type==='core').length})</button>`:''}</div>
+    <p class="hint" style="margin:4px 0 10px">${esc(pl.bylaw||'الخطة الدراسية')} · ${esc(levelLabel(p,u.level))} · ${semName(S.term.semester)}.${nElec?` الاختياري: يدرس الطالب ${pick||'؟'} من ${nElec}، فأضف للترم ما سيُفتح فقط.`:''} النظام يقترح، والقرار لك.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>النوع</th><th>الشعبة</th><th>س.م</th><th>الطلاب</th><th>متطلب سابق</th><th></th></tr></thead><tbody>${gaps.missing.map(gapRow).join('')}</tbody></table></div></section>`
+    :`<div class="okbox" style="margin-bottom:16px">كل مواد الخطة الدراسية (${gaps.all.length}) لهذه المجموعات في ${semName(S.term.semester)} أُضيفت إلى الترم.</div>`)
+    :`<div class="infobox" style="margin-bottom:16px">لا توجد مواد في الخطة الدراسية لهذه المجموعات في ${semName(S.term.semester)}. <a href="#plans">تعريف الخطة</a></div>`;
   const progTabs=progTabsHtml(p.id,'selProgram');
   const levelTabs=p.levels?Array.from({length:p.levels},(_,i)=>i+1).map(l=>`<button class="btn sm ${l===u.level?'primary':''}" data-act="selLevel" data-v="${l}" aria-pressed="${l===u.level}">${levelName(p,l)}</button>`).join(''):'';
   const majorChips=p.levels&&p.majorsFrom&&u.level>=p.majorsFrom?`<span class="meta" style="margin-inline-start:8px">الشعبة:</span><button class="btn sm ${!u.major?'primary':''}" data-act="selMajor" data-v="">كل الشعب</button>${p.majors.map(m=>`<button class="btn sm ${u.major===m?'primary':''}" data-act="selMajor" data-v="${m}">${esc(major(m).name)}</button>`).join('')}`:'';
-  return `<div class="page-head"><div><h2>المواد حسب البرنامج والفرقة</h2><p>${esc(S.faculty.name)} · المواد المتضافة لكل مجموعة طلاب في ${esc(S.term.name)}، ومجموعاتها ومحاضريها، وحالة إرسالها لنظام القاعات.</p></div>
-  <div class="inline"><button class="btn" data-act="offerHere">إضافة مادة للترم</button><button class="btn primary" data-act="sendSel" ${notSent?'':'disabled'}>إرسال الجاهز لنظام القاعات (${notSent})</button></div></div>
+  return `<div class="page-head"><div><h2>المواد حسب البرنامج والفرقة</h2><p>${esc(S.faculty.name)} · المواد المضافة لكل مجموعة طلاب في ${esc(S.term.name)}، ومجموعاتها ومحاضروها، وحالة إرسالها إلى نظام القاعات.</p></div>
+  <div class="inline"><button class="btn" data-act="offerHere">إضافة مادة للترم</button><button class="btn primary" data-act="sendSel" ${notSent?'':'disabled'}>إرسال الجاهز إلى نظام القاعات (${notSent})</button></div></div>
   <div class="tabs" role="group" aria-label="البرامج">${progTabs}</div>
   ${levelTabs||majorChips?`<div class="inline" style="margin-bottom:12px" role="group" aria-label="الفرقة والشعبة">${levelTabs}${majorChips}</div>`:''}
   <div class="meta" style="margin-bottom:12px">مجموعات الطلاب: ${list.map(c=>`<span class="tag">${esc(cohortName(c,false))} · <b class="num">${c.students}</b> طالب</span>`).join('')||'—'}</div>
   <div class="tiles">
     <div class="tile"><b>${students}</b><span>طالب</span></div>
-    <div class="tile"><b>${act.length}</b><span>مادة متضافة للترم</span></div>
+    <div class="tile"><b>${act.length}</b><span>مادة مضافة للترم</span></div>
     <div class="tile"><b>${credits}</b><span>ساعة معتمدة</span></div>
-    <div class="tile"><b>${sess}</b><span>حصة محتاجة مكان</span></div>
-    <div class="tile ${blocked?'bad':'ok'}"><b>${blocked}</b><span>مادة ناقصها بيانات</span></div>
+    <div class="tile"><b>${sess}</b><span>حصة تحتاج مكانًا</span></div>
+    <div class="tile ${blocked?'bad':'ok'}"><b>${blocked}</b><span>مادة بياناتها ناقصة</span></div>
   </div>
   ${planPanel}
-  <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>القسم</th><th>س.م</th><th>الجمهور</th><th>الطلاب</th><th>المجموعات وخطة التدريس</th><th>الإرسال</th><th>التوزيع</th><th>تنبيهات</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>القسم</th><th>س.م</th><th>مجموعات الطلاب</th><th>الطلاب</th><th>المجموعات وخطة التدريس</th><th>الإرسال</th><th>التوزيع</th><th>تنبيهات</th></tr></thead><tbody>
   ${offs.map(o=>{ const co=course(o.courseId), is=issuesOf(o), [st,k]=sendState(o);
-    return `<tr class="click" data-act="openOff" data-id="${o.id}" tabindex="0"${o.offered?'':' style="opacity:.6"'}><td><b>${esc(co.code)}</b> · ${esc(co.name)}${isElective(o)?' '+pill('اختيارية','off'):''}${inPlan(o)?'':' '+pill('من برة الخطة','warn')}</td><td>${esc(dept(co.dept).name)}</td><td class="num">${co.credits}</td>
+    return `<tr class="click" data-act="openOff" data-id="${o.id}" tabindex="0"${o.offered?'':' style="opacity:.6"'}><td><b>${esc(co.code)}</b> · ${esc(co.name)}${isElective(o)?' '+pill('اختيارية','off'):''}${inPlan(o)?'':' '+pill('خارج الخطة','warn')}</td><td>${esc(dept(co.dept).name)}</td><td class="num">${co.credits}</td>
     <td>${o.audiences.length>1?pill('مشتركة','acc')+' ':''}<span class="meta">${o.audiences.map(id=>esc(cohortName(cohort(id),false))).join('، ')}</span></td><td class="num">${o.students}${isElective(o)?'<div class="meta">متوقع</div>':''}</td><td><div class="sess">${groupsSummary(o)}</div></td>
-    <td>${pill(st,k)}${o.sentAt&&o.offered?`<div class="meta">${esc(o.sentAt)}</div>`:''}</td><td>${allocCell(o)}</td><td>${is.bad.map(x=>`<span class="tag bad">${esc(x)}</span>`).join('')}${is.warn.map(x=>`<span class="tag warn">${esc(x)}</span>`).join('')}</td></tr>`; }).join('')||'<tr><td colspan="9" class="meta">مفيش مواد متضافة لمجموعات الطلاب دي في الترم ده. استخدم "إضافة مادة للترم".</td></tr>'}
+    <td>${pill(st,k)}${o.sentAt&&o.offered?`<div class="meta">${esc(o.sentAt)}</div>`:''}</td><td>${allocCell(o)}</td><td>${is.bad.map(x=>`<span class="tag bad">${esc(x)}</span>`).join('')}${is.warn.map(x=>`<span class="tag warn">${esc(x)}</span>`).join('')}</td></tr>`; }).join('')||'<tr><td colspan="9" class="meta">لا توجد مواد مضافة لمجموعات الطلاب هذه في هذا الترم. استخدم "إضافة مادة للترم".</td></tr>'}
   </tbody></table></div>`;
 }
 function viewCatalog(){
   const f=S.ui.catFilter;
   const list=S.courses.filter(c=>(!f.dept||c.dept===f.dept)&&(!f.q||c.name.includes(f.q)||c.code.toLowerCase().includes(f.q.toLowerCase())));
-  return `<div class="page-head"><div><h2>تفاصيل المواد</h2><p>كل مواد اللائحة في ${esc(S.faculty.name)}: القسم المالك، والساعات، وخطة التدريس. المادة الواحدة ممكن تتضاف للترم لأكتر من برنامج.</p></div><button class="btn primary" data-act="newCourse">مادة جديدة</button></div>
+  return `<div class="page-head"><div><h2>تفاصيل المواد</h2><p>جميع مواد اللائحة في ${esc(S.faculty.name)}: القسم المسؤول، والساعات، وخطة التدريس. يمكن إضافة المادة الواحدة للترم لأكثر من برنامج.</p></div><button class="btn primary" data-act="newCourse">مادة جديدة</button></div>
   <div class="filters">
     <input type="text" data-chg="cat" data-k="q" value="${esc(f.q)}" placeholder="بحث بالاسم أو الكود" aria-label="بحث">
     <select data-chg="cat" data-k="dept" aria-label="القسم"><option value="">كل الأقسام</option>${S.depts.map(d=>`<option value="${d.id}"${f.dept===d.id?' selected':''}>${esc(d.name)}</option>`).join('')}</select>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>الكود</th><th>المادة</th><th>القسم</th><th>الفصل</th><th>س.م</th><th>خطة التدريس</th><th>في الخطط الدراسية</th><th>متضافة للترم لـ</th><th></th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>الكود</th><th>المادة</th><th>القسم</th><th>الفصل</th><th>س.م</th><th>خطة التدريس</th><th>في الخطط الدراسية</th><th>مضافة للترم لـ</th><th></th></tr></thead><tbody>
   ${list.map(c=>{ const offs=S.offerings.filter(o=>o.courseId===c.id);
     const inPl=[]; for(const pl of S.plans){ const pr=program(pl.programId); if(!pr) continue; const seen=new Set(); for(const i of pl.items) if(i.courseId===c.id&&!seen.has(`${i.level}|${i.sem}`)){ seen.add(`${i.level}|${i.sem}`); inPl.push(`<span class="tag" title="${esc(pr.name)} · ${esc(levelLabel(pr,i.level))} · ${semName(i.sem)}">${esc(pr.code)}${i.level?' '+i.level:''} · ف${i.sem}${i.type==='elective'?' · اختياري':''}</span>`); } }
     return `<tr><td class="num"><b>${esc(c.code)}</b></td><td>${esc(c.name)}</td><td>${esc(dept(c.dept).name)}</td><td>${c.semester===1?'الأول':'الثاني'}</td><td class="num">${c.credits}</td>
     <td>${Object.entries(c.sessions).map(([k,s])=>{ const w=weeksOf(s); return `<span class="tag">${s.count} ${s.count>1?KINDS_PL[k]:KINDS[k]} · ${s.hours} س · أ${w.from}–${w.to}</span>`; }).join('')}</td>
-    <td>${inPl.join('')||'<span class="meta">مش في أي خطة</span>'}</td>
-    <td>${offs.map(o=>`<button class="tag" style="cursor:pointer${o.offered?'':';opacity:.6'}" data-act="openOff" data-id="${o.id}">${esc(audNames(o))}</button>`).join('')||'<span class="meta">مش متضافة للترم</span>'}</td>
+    <td>${inPl.join('')||'<span class="meta">ليست في أي خطة</span>'}</td>
+    <td>${offs.map(o=>`<button class="tag" style="cursor:pointer${o.offered?'':';opacity:.6'}" data-act="openOff" data-id="${o.id}">${esc(audNames(o))}</button>`).join('')||'<span class="meta">غير مضافة للترم</span>'}</td>
     <td>${c.semester===S.term.semester?`<button class="btn sm" data-act="offerCourse" data-id="${c.id}">إضافة للترم</button>`:''}</td></tr>`; }).join('')}
   </tbody></table></div>`;
 }
@@ -651,17 +651,17 @@ function viewPlans(){
     const core=items.filter(i=>i.type==='core'), elec=items.filter(i=>i.type==='elective'), k=pkey(l,s,'');
     const row=i=>{ const co=course(i.courseId); const bad=i.prereq.filter(x=>!prereqOk(pl,i,x));
       return `<tr><td><b>${esc(co.code)}</b> · ${esc(co.name)}</td><td class="num">${co.credits}</td><td>${pill(PTYPE_ITEM[i.type],i.type==='core'?'acc':'off')}</td>${p.majorsFrom&&l>=p.majorsFrom?`<td>${i.major?esc(major(i.major)?.name||'—'):'<span class="meta">مشتركة</span>'}</td>`:''}
-      <td>${i.prereq.map(x=>`<span class="tag${bad.includes(x)?' warn" title="المتطلب ده مش قبلها في الخطة':''}">${esc(course(x)?.code||x)}</span>`).join('')||'<span class="meta">—</span>'}</td>
-      <td style="width:1%;white-space:nowrap"><div class="inline" style="flex-wrap:nowrap"><button class="btn sm ghost" data-act="planEdit" data-id="${i.id}" aria-label="تعديل ${esc(co.code)}">تعديل</button><button class="btn sm ghost danger" data-act="planDel" data-id="${i.id}" aria-label="شيل ${esc(co.code)} من الخطة">شيل</button></div></td></tr>`; };
+      <td>${i.prereq.map(x=>`<span class="tag${bad.includes(x)?' warn" title="هذا المتطلب لا يسبقها في الخطة':''}">${esc(course(x)?.code||x)}</span>`).join('')||'<span class="meta">—</span>'}</td>
+      <td style="width:1%;white-space:nowrap"><div class="inline" style="flex-wrap:nowrap"><button class="btn sm ghost" data-act="planEdit" data-id="${i.id}" aria-label="تعديل ${esc(co.code)}">تعديل</button><button class="btn sm ghost danger" data-act="planDel" data-id="${i.id}" aria-label="إزالة ${esc(co.code)} من الخطة">إزالة</button></div></td></tr>`; };
     const hasMaj=p.majorsFrom&&l>=p.majorsFrom;
     return `<div class="card"><div class="inline" style="justify-content:space-between"><b>${semName(s)}</b><span class="meta">إجباري ${core.reduce((a,i)=>a+course(i.courseId).credits,0)} س.م${elec.length?` · اختياري: ${elec.length} مواد`:''}</span></div>
-      ${items.length?`<div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>المادة</th><th>س.م</th><th>النوع</th>${hasMaj?'<th>الشعبة</th>':''}<th>متطلب سابق</th><th></th></tr></thead><tbody>${items.map(row).join('')}</tbody></table></div>`:'<div class="meta" style="margin:8px 0">مفيش مواد لسه.</div>'}
-      <div class="inline" style="margin-top:8px"><button class="btn sm" data-act="planAdd" data-l="${l||''}" data-s="${s}">إضافة مادة</button>${elec.length?`<label class="meta">الطالب بياخد <input type="number" min="1" max="${elec.length}" style="width:56px" data-chg="planPick" data-k="${k}" value="${pl.picks[k]||''}" aria-label="عدد المواد الاختيارية"> من ${elec.length} اختياري</label>`:''}</div></div>`;
+      ${items.length?`<div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>المادة</th><th>س.م</th><th>النوع</th>${hasMaj?'<th>الشعبة</th>':''}<th>متطلب سابق</th><th></th></tr></thead><tbody>${items.map(row).join('')}</tbody></table></div>`:'<div class="meta" style="margin:8px 0">لا توجد مواد بعد.</div>'}
+      <div class="inline" style="margin-top:8px"><button class="btn sm" data-act="planAdd" data-l="${l||''}" data-s="${s}">إضافة مادة</button>${elec.length?`<label class="meta">يدرس الطالب <input type="number" min="1" max="${elec.length}" style="width:56px" data-chg="planPick" data-k="${k}" value="${pl.picks[k]||''}" aria-label="عدد المواد الاختيارية"> من ${elec.length} اختياري</label>`:''}</div></div>`;
   };
-  return `<div class="page-head"><div><h2>الخطط الدراسية</h2><p>المواد اللي طلاب كل برنامج بيدرسوها في كل ${p.levels?(p.type==='credit'?'مستوى':'فرقة'):'سنة'} وكل فصل دراسي، حسب اللائحة. وشاشة المواد حسب البرنامج والفرقة بتقترح منها كل ترم.</p></div></div>
+  return `<div class="page-head"><div><h2>الخطط الدراسية</h2><p>المواد التي يدرسها طلاب كل برنامج في كل ${p.levels?(p.type==='credit'?'مستوى':'فرقة'):'سنة'} وكل فصل دراسي وفق اللائحة، وتقترح منها شاشة المواد حسب البرنامج والفرقة كل ترم.</p></div></div>
   <div class="tabs" role="group" aria-label="البرامج">${progTabsHtml(pid,'planProg')}</div>
-  <div class="inline" style="margin-bottom:14px;justify-content:space-between"><div><b>${esc(pl.bylaw||'من غير اسم لائحة')}</b> <button class="btn sm ghost" data-act="planBylaw">تعديل اسم اللائحة</button></div><span class="meta">${all.length} مادة في الخطة · ${coreH} س.م إجباري</span></div>
-  ${levels.map(l=>`<section class="panel" style="margin-bottom:14px" aria-label="${esc(levelLabel(p,l))}"><h3>${esc(l?levelLabel(p,l):p.name)}${p.majorsFrom&&l>=p.majorsFrom?` <span class="meta">· فيها شعب: ${p.majors.map(m=>esc(major(m).name)).join('، ')}</span>`:''}</h3><div style="display:grid;gap:12px">${sems.map(s=>semBox(l,s)).join('')}</div></section>`).join('')}`;
+  <div class="inline" style="margin-bottom:14px;justify-content:space-between"><div><b>${esc(pl.bylaw||'بدون اسم لائحة')}</b> <button class="btn sm ghost" data-act="planBylaw">تعديل اسم اللائحة</button></div><span class="meta">${all.length} مادة في الخطة · ${coreH} س.م إجباري</span></div>
+  ${levels.map(l=>`<section class="panel" style="margin-bottom:14px" aria-label="${esc(levelLabel(p,l))}"><h3>${esc(l?levelLabel(p,l):p.name)}${p.majorsFrom&&l>=p.majorsFrom?` <span class="meta">· بها شعب: ${p.majors.map(m=>esc(major(m).name)).join('، ')}</span>`:''}</h3><div style="display:grid;gap:12px">${sems.map(s=>semBox(l,s)).join('')}</div></section>`).join('')}`;
 }
 async function planItemDialog(pl,i,l,s){
   const p=program(pl.programId), hasMaj=p.majorsFrom&&l&&l>=p.majorsFrom;
@@ -671,12 +671,12 @@ async function planItemDialog(pl,i,l,s){
     {id:'c',label:'المادة',type:'select',full:true,options:opts,value:i?.courseId||''},
     {id:'type',label:'النوع',type:'select',options:Object.entries(PTYPE_ITEM),value:i?.type||'core'},
     ...(hasMaj?[{id:'major',label:'الشعبة',type:'select',options:[['','مشتركة لكل الشعب'],...p.majors.map(m=>[m,major(m).name])],value:i?.major||''}]:[]),
-    {id:'pre',label:'المتطلب السابق',type:'select',options:[['','مفيش'],...S.courses.map(c=>[c.id,`${c.code} · ${c.name}`])],value:i?.prereq[0]||''}],ok:i?'حفظ':'إضافة'});
+    {id:'pre',label:'المتطلب السابق',type:'select',options:[['','لا يوجد'],...S.courses.map(c=>[c.id,`${c.code} · ${c.name}`])],value:i?.prereq[0]||''}],ok:i?'حفظ':'إضافة'});
   if(!v) return;
   const data={courseId:v.c,type:v.type,major:hasMaj?(v.major||null):null,prereq:v.pre&&v.pre!==v.c?[v.pre]:[]};
-  if(pl.items.some(x=>x!==i&&x.courseId===data.courseId&&(x.level||null)===l&&x.sem===s&&(x.major||null)===data.major)){ toast('المادة دي موجودة بالفعل في نفس المكان من الخطة'); return; }
+  if(pl.items.some(x=>x!==i&&x.courseId===data.courseId&&(x.level||null)===l&&x.sem===s&&(x.major||null)===data.major)){ toast('هذه المادة موجودة بالفعل في الموضع نفسه من الخطة'); return; }
   if(i) Object.assign(i,data); else pl.items.push({id:nid('pi'),level:l,sem:s,...data});
-  toast(i?'اتعدلت':'اتضافت للخطة. هتظهر كاقتراح في شاشة المواد حسب البرنامج والفرقة.');
+  toast(i?'تم التعديل':'أُضيفت إلى الخطة، وستظهر كاقتراح في شاشة المواد حسب البرنامج والفرقة.');
 }
 const PACT={
   planProg(d){ S.ui.planProg=d.id; },
@@ -685,9 +685,9 @@ const PACT={
   async planEdit(d){ const pl=planOf(S.ui.planProg), i=pl.items.find(x=>x.id===d.id); await planItemDialog(pl,i,i.level||null,i.sem); },
   planDel(d){ const pl=planOf(S.ui.planProg); const i=pl.items.find(x=>x.id===d.id); pl.items=pl.items.filter(x=>x!==i);
     const n=S.offerings.filter(o=>o.offered&&o.courseId===i.courseId&&o.audiences.some(a=>itemCohorts(pl.programId,i).some(c=>c.id===a))).length;
-    toast(n?`اتشالت من الخطة. المادة لسه في الترم، وهيظهر عليها "من برة الخطة".`:'اتشالت من الخطة'); },
+    toast(n?`حُذفت من الخطة. المادة ما زالت في الترم، وستظهر عليها علامة "خارج الخطة".`:'حُذفت من الخطة'); },
   async planOffer(d){ const g=planGaps().missing.find(x=>x.courseId===d.c); if(!g) return; await offerFromPlan(g,true); },
-  async planOfferCore(){ const list=planGaps().missing.filter(g=>g.type==='core'); for(const g of list) await offerFromPlan(g,false); toast(`اتضافت ${list.length} مادة للترم. حدد المحاضرين لكل واحدة.`); }
+  async planOfferCore(){ const list=planGaps().missing.filter(g=>g.type==='core'); for(const g of list) await offerFromPlan(g,false); toast(`أُضيفت ${list.length} مادة إلى الترم. حدّد المحاضرين لكل مادة.`); }
 };
 async function offerFromPlan(g,open){
   let students=null;
@@ -695,11 +695,11 @@ async function offerFromPlan(g,open){
     const {p}=selection(), pl=planOf(p.id), sum=g.aud.reduce((a,id)=>a+cohort(id).students,0);
     const n=planGaps().all.filter(x=>x.type==='elective').length, pick=pl.picks[pkey(S.ui.sel.level,S.term.semester,'')]||1;
     const guess=Math.ceil(sum*pick/Math.max(1,n));
-    const v=await ask({title:`إضافة ${course(g.courseId).code} للترم · مادة اختيارية`,body:`<p class="meta">الطلاب هيختاروا ${pick} من ${n} مواد اختيارية، فمش كل الـ ${sum} طالب هياخدوها. اكتب العدد المتوقع لحد ما التسجيل الفعلي يوصل.</p>`,fields:[{id:'n',label:'عدد الطلاب المتوقع',type:'number',value:String(guess),min:1,required:true}],ok:'إضافة للترم'});
+    const v=await ask({title:`إضافة ${course(g.courseId).code} للترم · مادة اختيارية`,body:`<p class="meta">سيختار الطلاب ${pick} من ${n} مواد اختيارية، لذلك لن يدرسها كل الـ ${sum} طالب. أدخل العدد المتوقع حتى يصل التسجيل الفعلي.</p>`,fields:[{id:'n',label:'عدد الطلاب المتوقع',type:'number',value:String(guess),min:1,required:true}],ok:'إضافة للترم'});
     if(!v) return; students=Math.max(1,Number(v.n)||guess);
   }
   const o=makeOffering(g.courseId,g.aud); if(students) o.students=students;
-  if(open){ S.ui.drawer=o.id; render(); toast('اتضافت للترم من الخطة. حدد المحاضرين وراجع المجموعات.'); }
+  if(open){ S.ui.drawer=o.id; render(); toast('أُضيفت إلى الترم من الخطة. حدّد المحاضرين وراجع المجموعات.'); }
 }
 
 /* ============ Master data (البيانات الأساسية) ============ */
@@ -712,27 +712,27 @@ function delBtn(act,id,used,why){ return `<button class="btn sm danger" data-act
 function viewMaster(){
   const tab=S.ui.mtab||'faculty';
   const tabs=`<div class="inline" role="group" aria-label="القوائم" style="margin-bottom:14px">${MTABS.map(([k,t])=>`<button class="btn sm ${k===tab?'primary':''}" data-act="mtab" data-v="${k}" aria-pressed="${k===tab}">${t}</button>`).join('')}</div>`;
-  const tbl=(head,rows,add)=>`<div class="tbl-wrap"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows||`<tr><td colspan="${head.length}" class="meta">مفيش بيانات.</td></tr>`}</tbody></table></div>${add?`<div class="inline" style="margin-top:10px">${add}</div>`:''}`;
+  const tbl=(head,rows,add)=>`<div class="tbl-wrap"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows||`<tr><td colspan="${head.length}" class="meta">لا توجد بيانات.</td></tr>`}</tbody></table></div>${add?`<div class="inline" style="margin-top:10px">${add}</div>`:''}`;
   let body='';
   if(tab==='faculty') body=`<section class="panel"><h3>${esc(S.university)}</h3>
     <div class="tbl-wrap"><table><thead><tr><th>الكلية</th><th>الحالة</th><th>الأقسام</th><th>البرامج</th><th>الطلاب</th><th>أعضاء هيئة التدريس</th></tr></thead><tbody>
-    ${S.faculties.map(f=>{ const cur=f.id===S.faculty.id; return `<tr><td><b>${esc(f.name)}</b></td><td>${cur?pill('مستخدمة دلوقتي','ok'):pill('مش مفعّلة','off')}</td><td class="num">${cur?S.depts.length:'—'}</td><td class="num">${cur?S.programs.length:'—'}</td><td class="num">${cur?S.cohorts.reduce((a,c)=>a+c.students,0).toLocaleString('ar-EG'):'—'}</td><td class="num">${cur?S.people.length:'—'}</td></tr>`; }).join('')}
+    ${S.faculties.map(f=>{ const cur=f.id===S.faculty.id; return `<tr><td><b>${esc(f.name)}</b></td><td>${cur?pill('مستخدمة حاليًا','ok'):pill('غير مفعّلة','off')}</td><td class="num">${cur?S.depts.length:'—'}</td><td class="num">${cur?S.programs.length:'—'}</td><td class="num">${cur?S.cohorts.reduce((a,c)=>a+c.students,0).toLocaleString('ar-EG'):'—'}</td><td class="num">${cur?S.people.length:'—'}</td></tr>`; }).join('')}
     </tbody></table></div>
     <div class="inline" style="margin-top:10px"><button class="btn sm" data-act="editFaculty">تعديل الأسماء</button></div>
-    <p class="hint">الترم الحالي: ${esc(S.term.name)} · ${S.term.weeks} أسبوع. النظام شغال على ${esc(S.faculty.name)} بس دلوقتي، وكل الأقسام والبرامج والمواد وأعضاء هيئة التدريس مربوطين بالكلية، فكليات تانية في ${esc(S.university)} ممكن تتضاف بعدين ببياناتها لوحدها.</p></section>`;
+    <p class="hint">الترم الحالي: ${esc(S.term.name)} · ${S.term.weeks} أسبوع. يعمل النظام حاليًا على ${esc(S.faculty.name)} فقط، وجميع الأقسام والبرامج والمواد وأعضاء هيئة التدريس مرتبطة بالكلية، لذلك يمكن إضافة كليات أخرى في ${esc(S.university)} لاحقًا ببياناتها المستقلة.</p></section>`;
   if(tab==='depts') body=tbl(['القسم','مستخدم في',''],S.depts.map(d=>{ const nc=S.courses.filter(c=>c.dept===d.id).length, np=S.people.filter(p=>p.dept===d.id).length;
-    return mRow(esc(d.name),`${nc} مادة · ${np} عضو هيئة تدريس`,`<button class="btn sm" data-act="editDept" data-id="${d.id}">تعديل</button>${delBtn('delDept',d.id,nc+np,'القسم ليه مواد أو أعضاء هيئة تدريس')}`); }).join(''),`<button class="btn primary" data-act="addDept">إضافة قسم</button>`);
+    return mRow(esc(d.name),`${nc} مادة · ${np} عضو هيئة تدريس`,`<button class="btn sm" data-act="editDept" data-id="${d.id}">تعديل</button>${delBtn('delDept',d.id,nc+np,'للقسم مواد أو أعضاء هيئة تدريس')}`); }).join(''),`<button class="btn primary" data-act="addDept">إضافة قسم</button>`);
   if(tab==='majors') body=tbl(['الشعبة','مستخدمة في',''],S.majors.map(m=>{ const ps=S.programs.filter(p=>p.majors.includes(m.id));
-    return mRow(esc(m.name),ps.length?ps.map(p=>esc(p.name)).join('، '):'مش مفعّلة في أي برنامج',`<button class="btn sm" data-act="editMajor" data-id="${m.id}">تعديل</button>${delBtn('delMajor',m.id,ps.length,'الشعبة مفعّلة في برامج')}`); }).join(''),`<button class="btn primary" data-act="addMajor">إضافة شعبة</button>`);
+    return mRow(esc(m.name),ps.length?ps.map(p=>esc(p.name)).join('، '):'غير مفعّلة في أي برنامج',`<button class="btn sm" data-act="editMajor" data-id="${m.id}">تعديل</button>${delBtn('delMajor',m.id,ps.length,'الشعبة مفعّلة في برامج')}`); }).join(''),`<button class="btn primary" data-act="addMajor">إضافة شعبة</button>`);
   if(tab==='programs'){ const pc=pid=>S.cohorts.filter(c=>c.programId===pid);
     body=`${S.programs.map(p=>`<div class="card" style="margin-bottom:10px"><div class="inline" style="justify-content:space-between"><div><b>${esc(p.name)}</b> <span class="tag">${esc(p.code)}</span> ${pill(PTYPE[p.type],p.type==='pg'?'acc':'off')}</div><button class="btn sm ghost" data-act="editProgram" data-id="${p.id}">تعديل</button></div>
       <div class="meta">${p.levels?`${p.levels} ${p.type==='credit'?'مستويات':'فرق'}`:'بدون فرق'}${p.majorsFrom?` · الشعب من ${levelName(p,p.majorsFrom)}: ${p.majors.map(m=>esc(major(m).name)).join('، ')}`:''} · التدريس الافتراضي: ${MODE[p.defaultMode]}</div>
       <details style="margin-top:8px"${p.id==='ar'?' open':''}><summary>مجموعات الطلاب (${pc(p.id).length}) · ${pc(p.id).reduce((a,c)=>a+c.students,0)} طالب</summary><div class="tbl-wrap" style="margin-top:6px"><table><thead><tr><th>مجموعة الطلاب</th><th>عدد الطلاب</th></tr></thead><tbody>${pc(p.id).map(c=>`<tr><td>${esc(cohortName(c,false))}</td><td><input type="number" min="0" style="width:100px" data-chg="cohortStudents" data-id="${c.id}" value="${c.students}" aria-label="عدد طلاب ${esc(cohortName(c))}"></td></tr>`).join('')}</tbody></table></div></details></div>`).join('')}
       <button class="btn primary" data-act="addProgram">إضافة برنامج</button>`; }
-  if(tab==='terms') body=tbl(['الفصل','الفترة',''],S.terms.map(t=>mRow(`${esc(t.name)}${t.id===S.termId?' '+pill('الحالي','ok'):''}`,`${['','الفصل الأول','الفصل الثاني','الفصل الصيفي'][t.semester]} · يبدأ ${esc(t.start)} · ${t.weeks} أسبوع`,`<button class="btn sm" data-act="editTerm" data-id="${t.id}">تعديل</button>${t.id===S.termId?'':`<button class="btn sm" data-act="setTerm" data-id="${t.id}">خليه الحالي</button>`}${delBtn('delTerm',t.id,t.id===S.termId,'الترم الحالي مينفعش يتحذف')}`)).join(''),`<button class="btn primary" data-act="addTerm">إضافة فصل دراسي</button>`);
-  if(tab==='equipment') body=`${tbl(['الأداة','مطلوبة في',''],Object.entries(EQ).map(([k,t])=>{ const n=S.courses.filter(c=>Object.values(c.reqs).some(l=>l.some(q=>q.eq===k))).length; return mRow(esc(t),n?`${n} مادة`:'مش مطلوبة في مواد',''); }).join(''),'')}<p class="hint">قائمة الأدوات بيملكها نظام القاعات (من البيانات الأساسية هناك)، وبتوصل هنا تلقائي لما النظامين يتفتحوا من نفس الموقع.</p>`;
-  if(tab==='fixed') body=`<div class="cols"><section class="panel"><h3>أنواع الحصص</h3>${Object.values(KINDS).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">ثابتة لأن نظام القاعات بيستقبل الحصص بيها.</p></section><section class="panel"><h3>طرق التدريس</h3>${Object.values(MODE).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">"حضوري - أونلاين" بيضيف كاميرا ومايك ونت كمتطلبات إلزامية في نظام القاعات.</p></section></div>`;
-  return `<div class="page-head"><div><h2>البيانات الأساسية</h2><p>${esc(S.university)} ← ${esc(S.faculty.name)}. القوائم اللي باقي النظام بيختار منها. الحذف مسموح بس للي مش مستخدم.</p></div></div>${tabs}<p class="hint" style="margin-top:-6px">أعضاء هيئة التدريس ودرجاتهم الوظيفية بيتعرفوا في module شئون أعضاء هيئة التدريس، والنظام ده بيقراهم بس عشان التعيين على الحصص وحساب العبء.</p>${body}`;
+  if(tab==='terms') body=tbl(['الفصل','الفترة',''],S.terms.map(t=>mRow(`${esc(t.name)}${t.id===S.termId?' '+pill('الحالي','ok'):''}`,`${['','الفصل الأول','الفصل الثاني','الفصل الصيفي'][t.semester]} · يبدأ ${esc(t.start)} · ${t.weeks} أسبوع`,`<button class="btn sm" data-act="editTerm" data-id="${t.id}">تعديل</button>${t.id===S.termId?'':`<button class="btn sm" data-act="setTerm" data-id="${t.id}">تعيينه كالحالي</button>`}${delBtn('delTerm',t.id,t.id===S.termId,'لا يمكن حذف الترم الحالي')}`)).join(''),`<button class="btn primary" data-act="addTerm">إضافة فصل دراسي</button>`);
+  if(tab==='equipment') body=`${tbl(['الأداة','مطلوبة في',''],Object.entries(EQ).map(([k,t])=>{ const n=S.courses.filter(c=>Object.values(c.reqs).some(l=>l.some(q=>q.eq===k))).length; return mRow(esc(t),n?`${n} مادة`:'غير مطلوبة في أي مادة',''); }).join(''),'')}<p class="hint">قائمة الأدوات يملكها نظام القاعات (من البيانات الأساسية هناك)، وتصل إلى هنا تلقائيًا عند فتح النظامين من الموقع نفسه.</p>`;
+  if(tab==='fixed') body=`<div class="cols"><section class="panel"><h3>أنواع الحصص</h3>${Object.values(KINDS).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">ثابتة لأن نظام القاعات يستقبل الحصص على أساسها.</p></section><section class="panel"><h3>طرق التدريس</h3>${Object.values(MODE).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">"حضوري - أونلاين" يضيف كاميرا وميكروفونًا وإنترنت كمتطلبات إلزامية في نظام القاعات.</p></section></div>`;
+  return `<div class="page-head"><div><h2>البيانات الأساسية</h2><p>${esc(S.university)} ← ${esc(S.faculty.name)}. القوائم التي يعتمد عليها باقي النظام. لا يُسمح بحذف عنصر مستخدم.</p></div></div>${tabs}<p class="hint" style="margin-top:-6px">يُعرَّف أعضاء هيئة التدريس ودرجاتهم الوظيفية في وحدة شؤون أعضاء هيئة التدريس، ويقرأها هذا النظام فقط لتعيينهم على الحصص وحساب العبء التدريسي.</p>${body}`;
 }
 async function nameDialog(title,value=''){ const v=await ask({title,fields:[{id:'name',label:'الاسم',required:true,value}],ok:'حفظ'}); return v&&v.name; }
 async function termDialog(t){
@@ -751,47 +751,47 @@ const MACT={
   delMajor(d){ S.majors=S.majors.filter(x=>x.id!==d.id); },
   async addTerm(){ await termDialog(null); },
   async editTerm(d){ await termDialog(find(S.terms,d.id)); },
-  setTerm(d){ S.termId=d.id; syncTerm(); toast(`الترم الحالي بقى ${S.term.name}`); },
+  setTerm(d){ S.termId=d.id; syncTerm(); toast(`أصبح الترم الحالي: ${S.term.name}`); },
   delTerm(d){ S.terms=S.terms.filter(x=>x.id!==d.id); }
 };
 
 function viewLoad(){
   const rows=S.people.map(p=>({p,...loadOf(p.id),max:maxFor(p)})).sort((a,b)=>b.hours/b.max-a.hours/a.max);
-  return `<div class="page-head"><div><h2>أعباء التدريس</h2><p>ساعات كل عضو هيئة تدريس في الأسبوع من كل البرامج، مقابل الحد الأقصى لدرجته الوظيفية. الأسماء والدرجات جاية من module شئون أعضاء هيئة التدريس.</p></div></div>
-  <div class="tbl-wrap"><table><thead><tr><th>الاسم</th><th>القسم</th><th>الدرجة</th><th>الساعات / الأسبوع</th><th>بيدرّس</th></tr></thead><tbody>
+  return `<div class="page-head"><div><h2>أعباء التدريس</h2><p>ساعات كل عضو هيئة تدريس أسبوعيًا من جميع البرامج، مقارنةً بالحد الأقصى لدرجته الوظيفية. الأسماء والدرجات واردة من وحدة شؤون أعضاء هيئة التدريس.</p></div></div>
+  <div class="tbl-wrap"><table><thead><tr><th>الاسم</th><th>القسم</th><th>الدرجة</th><th>الساعات / الأسبوع</th><th>المواد التي يدرّسها</th></tr></thead><tbody>
   ${rows.map(r=>{ const pct=Math.min(100,Math.round(r.hours/r.max*100)); const c=r.hours>r.max?'var(--bad)':r.hours>=r.max*.85?'var(--warn)':'var(--accent)';
     return `<tr><td><b>${esc(r.p.name)}</b></td><td>${esc(dept(r.p.dept)?.name||'—')}</td><td>${esc(rankOf(r.p)?.name||(r.p.role==='doctor'?'دكتور':'معيد'))}</td><td><div class="load"><i style="--w:${pct}%;--c:${c}"></i><span class="num"${r.hours>r.max?' style="color:var(--bad);font-weight:600"':''}>${r.hours} / ${r.max}</span></div></td>
-    <td>${r.items.length?r.items.map(x=>`<button class="tag" style="cursor:pointer" data-act="openOff" data-id="${x.o.id}">${esc(x.co.code)} ${esc(progOf(x.o).code)} · ${esc(groupLabel(x.s.group,x.s.lg))} · ${x.s.hours*x.s.perWeek} س</button>`).join(''):'<span class="meta">مفيش</span>'}</td></tr>`; }).join('')}
+    <td>${r.items.length?r.items.map(x=>`<button class="tag" style="cursor:pointer" data-act="openOff" data-id="${x.o.id}">${esc(x.co.code)} ${esc(progOf(x.o).code)} · ${esc(groupLabel(x.s.group,x.s.lg))} · ${x.s.hours*x.s.perWeek} س</button>`).join(''):'<span class="meta">لا يوجد</span>'}</td></tr>`; }).join('')}
   </tbody></table></div>`;
 }
 function viewOutbox(){
   const f=S.ui.outFilter;
   const list=S.offerings.filter(o=>o.offered&&semOf(o)===S.term.semester).filter(o=>f==='all'||sendState(o)[1]===f);
   const pv=S.ui.preview?S.offerings.find(o=>o.id===S.ui.preview):null;
-  return `<div class="page-head"><div><h2>الإرسال لنظام القاعات</h2><p>كل مادة متضافة للترم بتتبعت كقائمة حصص: مجموعات المحاضرة والسكاشن والمعامل، وأسابيعها، ومتطلباتها. أي تغيير بعد الإرسال لازم يتبعت كتحديث.</p></div>
-  <div class="inline"><button class="btn sm ${f==='all'?'primary':''}" data-act="outFilter" data-v="all">الكل</button><button class="btn sm ${f==='acc'?'primary':''}" data-act="outFilter" data-v="acc">ماتبعتتش</button><button class="btn sm ${f==='warn'?'primary':''}" data-act="outFilter" data-v="warn">اتغيرت</button><button class="btn sm ${f==='ok'?'primary':''}" data-act="outFilter" data-v="ok">اتبعتت</button></div></div>
+  return `<div class="page-head"><div><h2>الإرسال لنظام القاعات</h2><p>تُرسل كل مادة مضافة للترم كقائمة حصص: مجموعات المحاضرة والسكاشن والمعامل، وأسابيعها، ومتطلباتها. أي تغيير بعد الإرسال يجب إرساله كتحديث.</p></div>
+  <div class="inline"><button class="btn sm ${f==='all'?'primary':''}" data-act="outFilter" data-v="all">الكل</button><button class="btn sm ${f==='acc'?'primary':''}" data-act="outFilter" data-v="acc">لم تُرسل</button><button class="btn sm ${f==='warn'?'primary':''}" data-act="outFilter" data-v="warn">تغيّرت</button><button class="btn sm ${f==='ok'?'primary':''}" data-act="outFilter" data-v="ok">أُرسلت</button></div></div>
   <div class="cols">
-    <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>الجمهور</th><th>الحصص</th><th>الحالة</th><th>التوزيع</th><th></th></tr></thead><tbody>
+    <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>مجموعات الطلاب</th><th>الحصص</th><th>الحالة</th><th>التوزيع</th><th></th></tr></thead><tbody>
     ${list.map(o=>{ const co=course(o.courseId), [st,k]=sendState(o), is=issuesOf(o), ss=sessionsOf(o), d=diffSent(o);
       return `<tr><td><b>${esc(co.code)}</b> · ${esc(co.name)}${k==='warn'?`<div class="meta" style="color:var(--warn)">${d.slice(0,3).map(esc).join('<br>')}${d.length>3?'<br>…':''}</div>`:''}</td><td class="meta">${esc(audNames(o))}</td><td class="num">${ss.filter(s=>s.mode!=='online').length}${ss.some(s=>s.mode==='online')?` <span class="meta">+ ${ss.filter(s=>s.mode==='online').length} أونلاين</span>`:''}</td><td>${pill(st,k)}</td><td>${allocCell(o)}</td>
-      <td><div class="inline"><button class="btn sm ghost" data-act="preview" data-id="${o.id}">البيانات</button>${k!=='ok'?(is.bad.length?`<span class="tag bad" title="${esc(is.bad.join('، '))}">ناقصها بيانات</span>`:`<button class="btn sm primary" data-act="sendOne" data-id="${o.id}">${k==='warn'?'إرسال تحديث':'إرسال'}</button>`):''}</div></td></tr>`; }).join('')||'<tr><td colspan="6" class="meta">مفيش مواد بالفلتر ده.</td></tr>'}
+      <td><div class="inline"><button class="btn sm ghost" data-act="preview" data-id="${o.id}">البيانات</button>${k!=='ok'?(is.bad.length?`<span class="tag bad" title="${esc(is.bad.join('، '))}">بياناتها ناقصة</span>`:`<button class="btn sm primary" data-act="sendOne" data-id="${o.id}">${k==='warn'?'إرسال تحديث':'إرسال'}</button>`):''}</div></td></tr>`; }).join('')||'<tr><td colspan="6" class="meta">لا توجد مواد بهذا الفلتر.</td></tr>'}
     </tbody></table></div>
-    <section class="panel" aria-labelledby="h-pv"><h3 id="h-pv">البيانات اللي بتتبعت ${pv?'· '+esc(course(pv.courseId).code):''}</h3>
-      ${pv?`<pre class="json">${esc(JSON.stringify(payload(pv),null,2))}</pre><div class="inline" style="margin-top:8px"><button class="btn sm" data-act="copyJson" data-id="${pv.id}">نسخ</button></div>`:'<div class="empty">اختار مادة ودوس "البيانات" عشان تشوف الرسالة.</div>'}
+    <section class="panel" aria-labelledby="h-pv"><h3 id="h-pv">البيانات المُرسلة ${pv?'· '+esc(course(pv.courseId).code):''}</h3>
+      ${pv?`<pre class="json">${esc(JSON.stringify(payload(pv),null,2))}</pre><div class="inline" style="margin-top:8px"><button class="btn sm" data-act="copyJson" data-id="${pv.id}">نسخ</button></div>`:'<div class="empty">اختر مادة واضغط "البيانات" لعرض الرسالة.</div>'}
     </section>
   </div>`;
 }
 function viewSettings(){
   const s=S.settings;
-  return `<div class="page-head"><div><h2>الإعدادات</h2><p>القيم دي بتتحكم في تقسيم المجموعات وحساب الأعباء.</p></div></div>
+  return `<div class="page-head"><div><h2>الإعدادات</h2><p>تتحكم هذه القيم في تقسيم المجموعات وحساب الأعباء.</p></div></div>
   <div class="cols"><section class="panel"><h3>الحد الأقصى لحجم المجموعة</h3>
     <div class="inline"><label>محاضرة <input type="number" min="20" max="2000" style="width:90px" data-chg="setting" data-k="maxGroup.lecture" value="${s.maxGroup.lecture}"></label><label>سكشن <input type="number" min="5" max="200" style="width:90px" data-chg="setting" data-k="maxGroup.section" value="${s.maxGroup.section}"></label><label>معمل <input type="number" min="5" max="200" style="width:90px" data-chg="setting" data-k="maxGroup.lab" value="${s.maxGroup.lab}"></label></div>
-    <p class="hint">عدد مجموعات المحاضرة = الطلاب ÷ حد المحاضرة. والسكاشن والمعامل بتتقسم جوه كل مجموعة محاضرة. تقدر تثبّت العدد يدوي في أي مادة.</p>
-    <p class="hint" style="margin-top:16px">الحد الأقصى للعبء بيتحسب حسب الدرجة الوظيفية، ودي جاية من module شئون أعضاء هيئة التدريس.</p>
+    <p class="hint">عدد مجموعات المحاضرة = عدد الطلاب ÷ الحد الأقصى للمحاضرة، وتُقسَّم السكاشن والمعامل داخل كل مجموعة محاضرة. يمكن تثبيت العدد يدويًا في أي مادة.</p>
+    <p class="hint" style="margin-top:16px">يُحسب الحد الأقصى للعبء حسب الدرجة الوظيفية، والدرجات واردة من وحدة شؤون أعضاء هيئة التدريس.</p>
   </section>
   <section class="panel"><h3>الحدود مع نظام القاعات</h3>
-    <p class="meta" style="margin-top:0">النظام ده مسؤول عن الهيكل الأكاديمي والمواد وإضافتها للترم ومجموعاتها ومحاضريها ومتطلباتها. نظام القاعات مسؤول عن الأماكن والمواعيد والتوزيع، والنظام هناك بيقترح والموظف بيأكد.</p>
-    <p class="meta">تعارض الطلاب بيتحسب بمجموعة الطلاب ومجموعة المحاضرة: مجموعة 1 هي نفس الطلاب في كل المواد (افتراض، سؤال E4).</p>
+    <p class="meta" style="margin-top:0">هذا النظام مسؤول عن الهيكل الأكاديمي والمواد وإضافتها للترم ومجموعاتها ومحاضريها ومتطلباتها. أما نظام القاعات فمسؤول عن الأماكن والمواعيد والتوزيع، حيث يقترح النظام ويؤكد الموظف.</p>
+    <p class="meta">يُحسب تعارض الطلاب بمجموعة الطلاب ومجموعة المحاضرة: المجموعة 1 هي نفس الطلاب في كل المواد (افتراض، سؤال E4).</p>
   </section></div>`;
 }
 
@@ -799,7 +799,7 @@ function viewSettings(){
 function drawerOffering(o){
   const co=course(o.courseId), is=issuesOf(o), [st,k]=sendState(o), d=diffSent(o), gs=groupsOf(o), p=progOf(o);
   const doctors=S.people.filter(x=>x.role==='doctor'), tas=S.people.filter(x=>x.role==='ta');
-  const opts=(list,v)=>`<option value="">— اختار —</option>${list.map(x=>`<option value="${x.id}"${v===x.id?' selected':''}>${esc(x.name)} (${loadOf(x.id).hours}/${maxFor(x)} س)</option>`).join('')}`;
+  const opts=(list,v)=>`<option value="">— اختر —</option>${list.map(x=>`<option value="${x.id}"${v===x.id?' selected':''}>${esc(x.name)} (${loadOf(x.id).hours}/${maxFor(x)} س)</option>`).join('')}`;
   const sum=o.audiences.reduce((a,id)=>a+(cohort(id)?.students||0),0);
   const kindBox=kk=>{
     const s=co.sessions[kk], reqs=co.reqs[kk]||[], w=weeksOf(s), list=gs[kk]||[];
@@ -812,28 +812,28 @@ function drawerOffering(o){
       <label>من أسبوع <input type="number" min="1" max="${S.term.weeks}" style="width:56px" data-chg="plan" data-f="startWeek" data-id="${o.id}" data-k="${kk}" value="${s.startWeek}"></label>
       <span class="${w.to>S.term.weeks?'tag bad':'tag'}">أسبوع ${w.from}–${w.to}</span></div>
       ${kk==='lecture'
-        ?`<div class="inline"><label>مجموعات المحاضرة <input type="number" min="1" max="20" style="width:64px" data-chg="lgCount" data-id="${o.id}" value="${gs.nL}"></label>${auto?`<span class="hint">تلقائي: ${o.students} ÷ ${S.settings.maxGroup.lecture} كحد أقصى</span>`:`<button class="btn sm ghost" data-act="autoLg" data-id="${o.id}">رجّعه تلقائي</button>`}</div>
+        ?`<div class="inline"><label>مجموعات المحاضرة <input type="number" min="1" max="20" style="width:64px" data-chg="lgCount" data-id="${o.id}" value="${gs.nL}"></label>${auto?`<span class="hint">تلقائيًا: ${o.students} ÷ ${S.settings.maxGroup.lecture} كحد أقصى</span>`:`<button class="btn sm ghost" data-act="autoLg" data-id="${o.id}">إعادته تلقائيًا</button>`}</div>
           <div>${list.map(g=>`<div class="grp"><b>${esc(groupLabel(g.id,gs.nL))}</b><span class="num">${g.students} طالب</span><select data-chg="lectStaff" data-id="${o.id}" data-g="${g.id}" aria-label="دكتور ${esc(groupLabel(g.id,gs.nL))}">${opts(doctors,staffOf(o,'lecture',g))}</select></div>`).join('')}</div>`
-        :`<div class="inline"><label>عدد ال${KINDS_PL[kk]} في كل مجموعة محاضرة <input type="number" min="1" max="30" style="width:64px" data-chg="subCount" data-id="${o.id}" data-k="${kk}" value="${list.filter(g=>g.parent==='L1').length}"></label>${auto?`<span class="hint">تلقائي: حد ${S.settings.maxGroup[kk]} طالب</span>`:`<button class="btn sm ghost" data-act="autoSub" data-id="${o.id}" data-k="${kk}">رجّعه تلقائي</button>`}</div>
-          <div class="inline"><label>المعيد الافتراضي <select data-chg="defaultTA" data-id="${o.id}" data-k="${kk}">${opts([...tas,...doctors],o.ta[kk]||null)}</select></label><span class="hint">${list.length} ${KINDS_PL[kk]} · تقدر تغيّر أي واحد تحت</span></div>
+        :`<div class="inline"><label>عدد ال${KINDS_PL[kk]} في كل مجموعة محاضرة <input type="number" min="1" max="30" style="width:64px" data-chg="subCount" data-id="${o.id}" data-k="${kk}" value="${list.filter(g=>g.parent==='L1').length}"></label>${auto?`<span class="hint">تلقائيًا: حد ${S.settings.maxGroup[kk]} طالب</span>`:`<button class="btn sm ghost" data-act="autoSub" data-id="${o.id}" data-k="${kk}">إعادته تلقائيًا</button>`}</div>
+          <div class="inline"><label>المعيد الافتراضي <select data-chg="defaultTA" data-id="${o.id}" data-k="${kk}">${opts([...tas,...doctors],o.ta[kk]||null)}</select></label><span class="hint">${list.length} ${KINDS_PL[kk]} · يمكن تغيير أي منها أدناه</span></div>
           <details${list.length<=6?' open':''}><summary>${list.length} ${KINDS_PL[kk]}</summary><div>${list.map(g=>`<div class="grp"><b>${esc(groupLabel(g.id,gs.nL))}</b><span class="num${g.students>S.settings.maxGroup[kk]?'" style="color:var(--warn)':''}">${g.students} طالب</span><select data-chg="groupStaff" data-id="${o.id}" data-g="${g.id}" aria-label="معيد ${esc(groupLabel(g.id,gs.nL))}">${opts([...tas,...doctors],staffOf(o,kk,g))}</select></div>`).join('')}</div></details>`}
-      <div><div class="sec-title">المتطلبات</div>${reqs.map((q,i)=>`<div class="reqline"><span>${esc(EQ[q.eq]||q.eq)}</span><button class="toggle ${q.mandatory?'on':''}" data-act="toggleMand" data-co="${co.id}" data-k="${kk}" data-i="${i}" aria-pressed="${q.mandatory}">${q.mandatory?'إلزامي':'اختياري'}</button><button class="btn sm ghost" data-act="delReq" data-co="${co.id}" data-k="${kk}" data-i="${i}" aria-label="حذف ${esc(EQ[q.eq])}">حذف</button>${q.mandatory?`<input type="text" data-chg="reqReason" data-co="${co.id}" data-k="${kk}" data-i="${i}" value="${esc(q.reason)}" placeholder="سبب الإلزام (مطلوب)" aria-label="سبب إلزام ${esc(EQ[q.eq])}"${q.reason?'':' style="border-color:var(--bad)"'}>`:''}</div>`).join('')||'<div class="meta">مفيش متطلبات.</div>'}
+      <div><div class="sec-title">المتطلبات</div>${reqs.map((q,i)=>`<div class="reqline"><span>${esc(EQ[q.eq]||q.eq)}</span><button class="toggle ${q.mandatory?'on':''}" data-act="toggleMand" data-co="${co.id}" data-k="${kk}" data-i="${i}" aria-pressed="${q.mandatory}">${q.mandatory?'إلزامي':'اختياري'}</button><button class="btn sm ghost" data-act="delReq" data-co="${co.id}" data-k="${kk}" data-i="${i}" aria-label="حذف ${esc(EQ[q.eq])}">حذف</button>${q.mandatory?`<input type="text" data-chg="reqReason" data-co="${co.id}" data-k="${kk}" data-i="${i}" value="${esc(q.reason)}" placeholder="سبب الإلزام (مطلوب)" aria-label="سبب إلزام ${esc(EQ[q.eq])}"${q.reason?'':' style="border-color:var(--bad)"'}>`:''}</div>`).join('')||'<div class="meta">لا توجد متطلبات.</div>'}
         <div class="inline" style="margin-top:6px"><select id="add-${co.id}-${kk}" aria-label="متطلب جديد">${Object.entries(EQ).filter(([e])=>!reqs.some(q=>q.eq===e)).map(([e,t])=>`<option value="${e}">${esc(t)}</option>`).join('')}</select><button class="btn sm" data-act="addReq" data-co="${co.id}" data-k="${kk}">إضافة</button></div>
-        <p class="hint" style="margin:4px 0 0">خطة التدريس والمتطلبات على مستوى المادة، فبتسري عليها في كل البرامج.</p></div>
+        <p class="hint" style="margin:4px 0 0">خطة التدريس والمتطلبات معرّفة على مستوى المادة، فتسري عليها في كل البرامج.</p></div>
     </section>`;
   };
   const missing=Object.keys(KINDS).filter(x=>!co.sessions[x]);
   return `<div class="drawer-head"><div><div class="meta">${esc(co.code)} · ${esc(dept(co.dept).name)} · ${co.credits} س.م · ${esc(p.name)}</div><h3 id="dr-t">${esc(co.name)}</h3><div style="margin-top:4px">${pill(st,k)}${o.sentAt&&o.offered?` <span class="meta">آخر إرسال ${esc(o.sentAt)}</span>`:''}</div></div><button class="btn ghost" data-act="closeDrawer" aria-label="إغلاق">إغلاق</button></div>
   <div class="drawer-body" id="drawer-body">
-    ${!o.offered?`<div class="infobox">المادة اتحذفت من الترم للمجموعات دي. <button class="btn sm" data-act="reoffer" data-id="${o.id}">رجّعها للترم</button></div>`:''}
-    <section class="card"><div class="sec-title">الجمهور</div><div>${o.audiences.map(id=>`<span class="tag">${esc(cohortName(cohort(id)))} · ${cohort(id).students}</span>`).join('')}</div>
-      <div class="inline" style="margin-top:8px"><button class="btn sm" data-act="editAud" data-id="${o.id}">تعديل الجمهور</button><label>الطلاب <input type="number" min="1" style="width:100px" data-chg="students" data-id="${o.id}" value="${o.students}"></label>${o.students!==sum?`<button class="btn sm ghost" data-act="useSum" data-id="${o.id}">خليه مجموع الجمهور (${sum})</button>`:'<span class="hint">= مجموع الجمهور</span>'}</div></section>
+    ${!o.offered?`<div class="infobox">حُذفت المادة من الترم لهذه المجموعات. <button class="btn sm" data-act="reoffer" data-id="${o.id}">إعادتها للترم</button></div>`:''}
+    <section class="card"><div class="sec-title">مجموعات الطلاب</div><div>${o.audiences.map(id=>`<span class="tag">${esc(cohortName(cohort(id)))} · ${cohort(id).students}</span>`).join('')}</div>
+      <div class="inline" style="margin-top:8px"><button class="btn sm" data-act="editAud" data-id="${o.id}">تعديل مجموعات الطلاب</button><label>الطلاب <input type="number" min="1" style="width:100px" data-chg="students" data-id="${o.id}" value="${o.students}"></label>${o.students!==sum?`<button class="btn sm ghost" data-act="useSum" data-id="${o.id}">اجعله مجموع طلاب المجموعات (${sum})</button>`:'<span class="hint">= مجموع طلاب المجموعات</span>'}</div></section>
     ${is.bad.length||is.warn.length?`<div class="issues">${is.bad.map(x=>`<div class="issue bad">${esc(x)}</div>`).join('')}${is.warn.map(x=>`<div class="issue warn">${esc(x)}</div>`).join('')}</div>`:'<div class="okbox">البيانات كاملة وجاهزة للإرسال.</div>'}
-    ${k==='warn'&&d.length?`<div class="issue warn"><b>اتغير بعد آخر إرسال:</b><br>${d.slice(0,12).map(esc).join('<br>')}${d.length>12?'<br>…':''}</div>`:''}
-    ${o.offered&&o.sent?`<section><div class="sec-title">حالة التوزيع في نظام القاعات</div><div class="card">${!ROOMS?'<div class="meta">نظام القاعات لسه مافتحش. افتحه من نفس الموقع عشان الحالة توصل هنا.</div>':allocOf(o).list.map(({s,a})=>`<div class="grp" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${KINDS[s.kind]} · ${esc(groupLabel(s.group,s.lg))}</b> <span class="meta">${a&&a.when?esc(a.when):''}${a&&a.room?' · '+esc(a.room)+' ('+esc(a.building)+')':''}</span></span>${a?pill(a.label,ALLOC_KIND[a.state]||'off'):'<span class="meta">لسه ماوصلش</span>'}</div>`).join('')}</div></section>`:''}
+    ${k==='warn'&&d.length?`<div class="issue warn"><b>تغيّر بعد آخر إرسال:</b><br>${d.slice(0,12).map(esc).join('<br>')}${d.length>12?'<br>…':''}</div>`:''}
+    ${o.offered&&o.sent?`<section><div class="sec-title">حالة التوزيع في نظام القاعات</div><div class="card">${!ROOMS?'<div class="meta">لم يُفتح نظام القاعات بعد. افتحه من الموقع نفسه لتصل الحالة إلى هنا.</div>':allocOf(o).list.map(({s,a})=>`<div class="grp" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${KINDS[s.kind]} · ${esc(groupLabel(s.group,s.lg))}</b> <span class="meta">${a&&a.when?esc(a.when):''}${a&&a.room?' · '+esc(a.room)+' ('+esc(a.building)+')':''}</span></span>${a?pill(a.label,ALLOC_KIND[a.state]||'off'):'<span class="meta">لم تصل بعد</span>'}</div>`).join('')}</div></section>`:''}
     ${Object.keys(co.sessions).map(kindBox).join('')}
     ${missing.length?`<div class="inline">${missing.map(x=>`<button class="btn sm" data-act="addKind" data-co="${co.id}" data-k="${x}">إضافة ${KINDS[x]}</button>`).join('')}</div>`:''}
-    <div class="inline">${o.offered&&k!=='ok'?`<button class="btn primary" data-act="sendOne" data-id="${o.id}" ${is.bad.length?'disabled':''}>${k==='warn'?'إرسال تحديث لنظام القاعات':'إرسال لنظام القاعات'}</button>`:''}<button class="btn" data-act="previewGo" data-id="${o.id}">شوف البيانات</button>${o.offered?`<button class="btn danger" data-act="unoffer" data-id="${o.id}">حذف المادة من الترم</button>`:''}</div>
+    <div class="inline">${o.offered&&k!=='ok'?`<button class="btn primary" data-act="sendOne" data-id="${o.id}" ${is.bad.length?'disabled':''}>${k==='warn'?'إرسال تحديث لنظام القاعات':'إرسال لنظام القاعات'}</button>`:''}<button class="btn" data-act="previewGo" data-id="${o.id}">عرض البيانات</button>${o.offered?`<button class="btn danger" data-act="unoffer" data-id="${o.id}">حذف المادة من الترم</button>`:''}</div>
   </div>`;
 }
 
@@ -867,7 +867,7 @@ const findOff=id=>S.offerings.find(o=>o.id===id);
 async function pickAudience(title,programId,level,pre=[]){
   const p=program(programId);
   const list=S.cohorts.filter(c=>c.programId===programId&&(!p.levels||c.level===level));
-  const v=await ask({title,fields:[{id:'aud',label:'مجموعات الطلاب اللي هتاخد المادة',type:'checks',required:true,options:list.map(c=>[c.id,`${cohortName(c,false)} (${c.students})`,pre.includes(c.id)])}],ok:'تأكيد'});
+  const v=await ask({title,fields:[{id:'aud',label:'مجموعات الطلاب التي ستدرس المادة',type:'checks',required:true,options:list.map(c=>[c.id,`${cohortName(c,false)} (${c.students})`,pre.includes(c.id)])}],ok:'تأكيد'});
   return v?v.aud:null;
 }
 function makeOffering(courseId,aud){
@@ -879,7 +879,7 @@ function makeOffering(courseId,aud){
 const ACT={
   ...MACT,
   ...PACT,
-  reset(){ const v=S.ui.view; store.del(SAVE_KEY); boot(true); S.ui.view=v; toast('رجعت البيانات التجريبية'); },
+  reset(){ const v=S.ui.view; store.del(SAVE_KEY); boot(true); S.ui.view=v; toast('تمت استعادة البيانات التجريبية'); },
   selProgram(d){ const p=program(d.id); S.ui.sel={program:p.id,level:p.levels?1:null,major:''}; },
   selLevel(d){ S.ui.sel.level=Number(d.v); S.ui.sel.major=''; },
   selMajor(d){ S.ui.sel.major=d.v; },
@@ -888,47 +888,47 @@ const ACT={
   outFilter(d){ S.ui.outFilter=d.v; },
   preview(d){ S.ui.preview=d.id; },
   previewGo(d){ S.ui.preview=d.id; S.ui.drawer=null; location.hash='outbox'; },
-  async copyJson(d){ try{ await navigator.clipboard.writeText(JSON.stringify(payload(findOff(d.id)),null,2)); toast('اتنسخت'); }catch(e){ toast('النسخ مش متاح هنا. حدد النص وانسخه يدوي.'); } },
-  sendOne(d){ const o=findOff(d.id); const was=sendState(o)[1]; if(send(o)) toast(was==='warn'?'اتبعت التحديث لنظام القاعات':'اتبعتت لنظام القاعات'); else toast('كمّل البيانات الناقصة الأول'); },
+  async copyJson(d){ try{ await navigator.clipboard.writeText(JSON.stringify(payload(findOff(d.id)),null,2)); toast('تم النسخ'); }catch(e){ toast('النسخ غير متاح هنا. حدّد النص وانسخه يدويًا.'); } },
+  sendOne(d){ const o=findOff(d.id); const was=sendState(o)[1]; if(send(o)) toast(was==='warn'?'أُرسل التحديث إلى نظام القاعات':'أُرسلت إلى نظام القاعات'); else toast('أكمل البيانات الناقصة أولًا'); },
   sendSel(){
     const {ids}=selection();
     const list=S.offerings.filter(o=>o.offered&&o.audiences.some(a=>ids.includes(a))&&semOf(o)===S.term.semester&&sendState(o)[1]!=='ok');
     let ok=0, skip=0; for(const o of list){ if(send(o)) ok++; else skip++; }
-    toast(`اتبعت ${ok}${skip?` · ${skip} ناقصها بيانات ومتبعتتش`:''}`);
+    toast(`أُرسلت ${ok}${skip?` · ${skip} لم تُرسل لنقص البيانات`:''}`);
   },
   autoLg(d){ findOff(d.id).lgCount=null; },
   autoSub(d){ delete findOff(d.id).subCount[d.k]; },
   useSum(d){ const o=findOff(d.id); o.students=o.audiences.reduce((a,id)=>a+(cohort(id)?.students||0),0); },
   async editAud(d){
     const o=findOff(d.id); const c0=cohort(o.audiences[0]);
-    const aud=await pickAudience('تعديل الجمهور',c0.programId,c0.level,o.audiences); if(!aud) return;
-    o.audiences=aud; render(); toast('اتعدل الجمهور. راجع عدد الطلاب.');
+    const aud=await pickAudience('تعديل مجموعات الطلاب',c0.programId,c0.level,o.audiences); if(!aud) return;
+    o.audiences=aud; render(); toast('تم تعديل مجموعات الطلاب. راجع عدد الطلاب.');
   },
   async offerHere(){
     const {p,ids}=selection();
     const planned=new Set(planGaps().all.map(g=>g.courseId));
     const cands=S.courses.filter(c=>!S.offerings.some(o=>o.courseId===c.id&&o.offered&&o.audiences.some(a=>ids.includes(a)))).sort((a,b)=>planned.has(b.id)-planned.has(a.id)||(b.semester===S.term.semester)-(a.semester===S.term.semester)||a.code.localeCompare(b.code));
-    if(!cands.length){ toast('كل المواد متضافة بالفعل للترم للمجموعات دي'); return; }
-    const v=await ask({title:'إضافة مادة للترم',wide:true,body:'<p class="meta">مواد الخطة الدراسية الأول. أي مادة من برة الخطة هتتضاف بتنبيه.</p>',fields:[{id:'c',label:'المادة',type:'select',full:true,options:cands.map(c=>[c.id,`${planned.has(c.id)?'':'(من برة الخطة) '}${c.code} · ${c.name} · ${dept(c.dept).name}`])},{id:'aud',label:'الجمهور',type:'checks',required:true,options:S.cohorts.filter(c=>c.programId===p.id&&(!p.levels||c.level===S.ui.sel.level)).map(c=>[c.id,`${cohortName(c,false)} (${c.students})`,ids.includes(c.id)])}],ok:'إضافة للترم'});
-    if(!v) return; const o=makeOffering(v.c,v.aud); S.ui.drawer=o.id; render(); toast(planned.has(v.c)?'اتضافت للترم. حدد المحاضرين وراجع المجموعات.':'اتضافت للترم، بس المادة دي مش في الخطة الدراسية للمجموعات دي.');
+    if(!cands.length){ toast('كل المواد مضافة بالفعل إلى الترم لهذه المجموعات'); return; }
+    const v=await ask({title:'إضافة مادة للترم',wide:true,body:'<p class="meta">تظهر مواد الخطة الدراسية أولًا، وأي مادة خارج الخطة ستُضاف مع تنبيه.</p>',fields:[{id:'c',label:'المادة',type:'select',full:true,options:cands.map(c=>[c.id,`${planned.has(c.id)?'':'(خارج الخطة) '}${c.code} · ${c.name} · ${dept(c.dept).name}`])},{id:'aud',label:'مجموعات الطلاب',type:'checks',required:true,options:S.cohorts.filter(c=>c.programId===p.id&&(!p.levels||c.level===S.ui.sel.level)).map(c=>[c.id,`${cohortName(c,false)} (${c.students})`,ids.includes(c.id)])}],ok:'إضافة للترم'});
+    if(!v) return; const o=makeOffering(v.c,v.aud); S.ui.drawer=o.id; render(); toast(planned.has(v.c)?'أُضيفت إلى الترم. حدّد المحاضرين وراجع المجموعات.':'أُضيفت إلى الترم، لكن المادة ليست في الخطة الدراسية لهذه المجموعات.');
   },
   async offerCourse(d){
     const opts=[]; for(const p of S.programs){ if(p.levels) for(let l=1;l<=p.levels;l++) opts.push([`${p.id}|${l}`,`${p.name} · ${levelName(p,l)}`]); else opts.push([`${p.id}|`,p.name]); }
     const v=await ask({title:`إضافة ${course(d.id).code} · ${course(d.id).name}`,fields:[{id:'pl',label:'البرنامج والفرقة',type:'select',options:opts}],ok:'التالي'});
     if(!v) return; const [pid,l]=v.pl.split('|');
-    const aud=await pickAudience('اختار الجمهور',pid,l?Number(l):null,S.cohorts.filter(c=>c.programId===pid&&(!l||c.level===Number(l))).map(c=>c.id));
-    if(!aud) return; const o=makeOffering(d.id,aud); S.ui.drawer=o.id; render(); toast('اتضافت للترم. حدد المحاضرين وراجع المجموعات.');
+    const aud=await pickAudience('اختر مجموعات الطلاب',pid,l?Number(l):null,S.cohorts.filter(c=>c.programId===pid&&(!l||c.level===Number(l))).map(c=>c.id));
+    if(!aud) return; const o=makeOffering(d.id,aud); S.ui.drawer=o.id; render(); toast('أُضيفت إلى الترم. حدّد المحاضرين وراجع المجموعات.');
   },
   reoffer(d){ findOff(d.id).offered=true; },
   async unoffer(d){
     const o=findOff(d.id); const co=course(o.courseId);
-    const v=await ask({title:`حذف ${co.name} من الترم`,body:`<p class="meta">${o.sent?'المادة اتبعتت لنظام القاعات قبل كده، وهيتبعت له إلغاء. الأماكن هتفضل محجوزة لحد ما موظف التوزيع يأكد.':'المادة ماتبعتتش لنظام القاعات.'}</p>`,fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'حذف المادة من الترم',danger:true});
-    if(!v) return; o.offered=false; if(o.sent){ o.sent=null; o.sentAt=null; o.cancelledSent=true; S.lastSendAt=stamp(); } render(); toast('اتحذفت المادة من الترم');
+    const v=await ask({title:`حذف ${co.name} من الترم`,body:`<p class="meta">${o.sent?'أُرسلت المادة إلى نظام القاعات من قبل، وسيُرسل إليه الإلغاء. ستظل الأماكن محجوزة حتى يؤكد موظف التوزيع.':'لم تُرسل المادة إلى نظام القاعات.'}</p>`,fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'حذف المادة من الترم',danger:true});
+    if(!v) return; o.offered=false; if(o.sent){ o.sent=null; o.sentAt=null; o.cancelledSent=true; S.lastSendAt=stamp(); } render(); toast('حُذفت المادة من الترم');
   },
   async toggleMand(d){
     const q=course(d.co).reqs[d.k][d.i];
     if(!q.mandatory){
-      const v=await ask({title:`${EQ[q.eq]} إلزامي`,body:'<p class="meta">موظف التوزيع بيشوف السبب ده وهو بيوزع، ويقدر يشيل الإلزام لحصة واحدة لو مفيش مكان.</p>',fields:[{id:'reason',label:'سبب الإلزام',type:'textarea',required:true,value:q.reason}],ok:'حفظ'});
+      const v=await ask({title:`${EQ[q.eq]} إلزامي`,body:'<p class="meta">يرى موظف التوزيع هذا السبب أثناء التوزيع، ويمكنه إلغاء الإلزام لحصة واحدة إذا لم يتوفر مكان.</p>',fields:[{id:'reason',label:'سبب الإلزام',type:'textarea',required:true,value:q.reason}],ok:'حفظ'});
       if(!v) return; q.mandatory=true; q.reason=v.reason;
     } else q.mandatory=false;
     render();
@@ -939,7 +939,7 @@ const ACT={
   async newCourse(){
     const v=await ask({title:'مادة جديدة',wide:true,fields:[
       {id:'code',label:'الكود',required:true},{id:'name',label:'الاسم',required:true},
-      {id:'dept',label:'القسم المالك',type:'select',options:S.depts.map(d=>[d.id,d.name]),value:'bus'},
+      {id:'dept',label:'القسم المسؤول',type:'select',options:S.depts.map(d=>[d.id,d.name]),value:'bus'},
       {id:'semester',label:'الفصل',type:'select',options:[['1','الأول'],['2','الثاني']],value:String(S.term.semester)},
       {id:'credits',label:'الساعات المعتمدة',type:'number',value:'3',min:1},
       {id:'lectures',label:'عدد المحاضرات في الترم',type:'number',value:'12',min:1},
@@ -949,10 +949,10 @@ const ACT={
     if(S.courses.some(c=>c.code.toLowerCase()===v.code.toLowerCase())){ toast(`الكود ${v.code} موجود بالفعل`); return; }
     const sessions={}, reqs={}; for(const k of v.kinds){ sessions[k]={hours:2,perWeek:1,count:Math.max(1,Number(k==='lecture'?v.lectures:v.others)||10),startWeek:k==='lecture'?1:3}; reqs[k]=[]; }
     S.courses.push({id:nid('c'),facultyId:S.faculty.id,code:v.code,name:v.name,dept:v.dept,semester:Number(v.semester),credits:Number(v.credits)||3,sessions,reqs});
-    render(); toast('اتضافت المادة. ضيفها للترم من زرار "إضافة للترم".');
+    render(); toast('تمت إضافة المادة. أضفها إلى الترم من زر "إضافة للترم".');
   },
   async addDept(){ const v=await ask({title:'قسم جديد',fields:[{id:'name',label:'اسم القسم',required:true}],ok:'إضافة'}); if(!v) return; S.depts.push({id:nid('dp'),name:v.name,facultyId:S.faculty.id}); render(); },
-  async addMajor(){ const v=await ask({title:'شعبة جديدة',fields:[{id:'name',label:'اسم الشعبة',required:true}],ok:'إضافة'}); if(!v) return; S.majors.push({id:nid('mj'),name:v.name}); render(); toast('اتضافت. فعّلها في البرامج اللي فيها الشعبة دي.'); },
+  async addMajor(){ const v=await ask({title:'شعبة جديدة',fields:[{id:'name',label:'اسم الشعبة',required:true}],ok:'إضافة'}); if(!v) return; S.majors.push({id:nid('mj'),name:v.name}); render(); toast('تمت الإضافة. فعّلها في البرامج التي تضم هذه الشعبة.'); },
   async addProgram(){ await programDialog(null); },
   async editProgram(d){ await programDialog(program(d.id)); }
 };
@@ -961,7 +961,7 @@ async function programDialog(p){
     {id:'name',label:'اسم البرنامج',required:true,value:p?.name||''},{id:'code',label:'كود مختصر',required:true,value:p?.code||''},
     {id:'type',label:'النوع',type:'select',value:p?.type||'bachelor',options:Object.entries(PTYPE)},
     {id:'levels',label:'عدد الفرق أو المستويات (0 للدراسات العليا)',type:'number',value:String(p?.levels??4),min:0},
-    {id:'majorsFrom',label:'الشعب تبدأ من فرقة (فاضي = مفيش شعب)',type:'number',value:p?.majorsFrom?String(p.majorsFrom):''},
+    {id:'majorsFrom',label:'الشعب تبدأ من الفرقة (اتركه فارغًا إذا لم توجد شعب)',type:'number',value:p?.majorsFrom?String(p.majorsFrom):''},
     {id:'mode',label:'التدريس الافتراضي',type:'select',value:p?.defaultMode||'inperson',options:Object.entries(MODE)},
     {id:'majors',label:'الشعب المتاحة',type:'checks',options:S.majors.map(m=>[m.id,m.name,p?p.majors.includes(m.id):false])}],ok:p?'حفظ':'إضافة'});
   if(!v) return;
@@ -971,7 +971,7 @@ async function programDialog(p){
   const before=S.cohorts; S.cohorts=buildCohorts(S,{},before);
   const lost=S.offerings.filter(o=>o.audiences.some(a=>!cohort(a)));
   for(const o of lost) o.audiences=o.audiences.filter(a=>cohort(a));
-  render(); toast(lost.length?`اتحفظ. ${lost.length} مادة في الترم اتشال منها جمهور مبقاش موجود، راجعها.`:'اتحفظ البرنامج ومجموعات الطلاب اتحدثت. سجّل أعداد الطلاب.');
+  render(); toast(lost.length?`تم الحفظ. ${lost.length} مادة في الترم حُذفت منها مجموعات طلاب لم تعد موجودة، يُرجى مراجعتها.`:'تم حفظ البرنامج وتحديث مجموعات الطلاب. سجّل أعداد الطلاب.');
 }
 const CHG={
   cat(t){ S.ui.catFilter[t.dataset.k]=t.value; },
