@@ -171,7 +171,7 @@ const ORD=['الأولى','الثانية','الثالثة','الرابعة','ا
 /* Same equipment keys as the rooms system; the rooms system owns this list and sends updates. */
 let EQ={projector:'بروجكتور',mic:'مايك وسماعات',ac:'تكييف',internet:'إنترنت',smartboard:'سبورة ذكية',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',excel:'Microsoft Excel',spss:'SPSS',accsoft:'برنامج محاسبي (ERP)'};
 const NAV=[['offer','المواد حسب البرنامج والفرقة'],['catalog','كتالوج المواد'],['master','البيانات الأساسية'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
-const VERSION='النسخة: 14 نوفمبر 12:00';
+const VERSION='النسخة: 14 نوفمبر 13:00';
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
 function seed(){
@@ -179,8 +179,11 @@ function seed(){
   const SEC=(count=10,startWeek=3)=>({hours:2,perWeek:1,count,startWeek});
   const R=(eq,mandatory=false,reason='')=>({eq,mandatory,reason});
   const st={
-    seq:300, version:3,
-    university:'الجامعة', faculty:{id:'fba',name:'كلية إدارة الأعمال'},
+    seq:300, version:4,
+    university:'جامعة الإسكندرية',
+    /* One faculty in use today; every department, program, course and staff member carries facultyId so more faculties can join later. */
+    faculties:[{id:'fba',name:'كلية إدارة الأعمال',active:true}],
+    faculty:{id:'fba',name:'كلية إدارة الأعمال'},
     term:{name:'الفصل الأول 2026/2027',semester:1,weeks:16,start:'2026-09-19'}, termId:'t1',
     terms:[{id:'t1',name:'الفصل الأول 2026/2027',semester:1,start:'2026-09-19',weeks:16},{id:'t2',name:'الفصل الثاني 2026/2027',semester:2,start:'2027-02-13',weeks:16},{id:'t3',name:'الفصل الصيفي 2027',semester:3,start:'2027-07-03',weeks:8}],
     ranks:[{id:'prof',name:'أستاذ',kind:'doctor',maxLoad:8},{id:'assoc',name:'أستاذ مساعد',kind:'doctor',maxLoad:10},{id:'lect',name:'مدرس',kind:'doctor',maxLoad:12},{id:'alect',name:'مدرس مساعد',kind:'ta',maxLoad:16},{id:'demo',name:'معيد',kind:'ta',maxLoad:16}],
@@ -236,6 +239,7 @@ function seed(){
   /* Student groups: program × level × major (majors from their start level); postgraduate programs are one group each. */
   const sizes={'ar-1':600,'ar-2':500,'ar-3-acc':200,'ar-3-bus':150,'ar-3-eco':60,'ar-3-mis':70,'ar-4-acc':180,'ar-4-bus':140,'ar-4-eco':50,'ar-4-mis':70,
     'en-1':120,'en-2':100,'en-3-acc':45,'en-3-bus':50,'en-4-acc':40,'en-4-bus':45,'ch-1':60,'ch-2':55,'ch-3':40,'ch-4':35,'in-1':1500,'in-2':1300,'in-3':1100,'in-4':1000,'dip':35,'ms':20,'mba':30};
+  for(const k of ['depts','programs','courses','people']) st[k].forEach(x=>x.facultyId='fba');
   st.cohorts=buildCohorts(st,sizes);
   const rk={d1:'prof',d2:'assoc',d3:'assoc',d4:'lect',d5:'lect',d6:'assoc',d7:'lect',d8:'lect',d9:'assoc',d10:'lect',m1:'demo',m2:'demo',m3:'alect',m4:'demo',m5:'demo',m6:'demo',m7:'alect'};
   st.people.forEach(p=>p.rank=rk[p.id]||(p.role==='doctor'?'lect':'demo'));
@@ -344,7 +348,7 @@ function sessionsOf(o){
 function payload(o){
   const co=course(o.courseId), p=progOf(o);
   return {
-    term:S.term.name, faculty:S.faculty, offeringId:o.id,
+    term:S.term.name, university:S.university, faculty:S.faculty, offeringId:o.id,
     course:{id:co.id,code:co.code,name:co.name,department:dept(co.dept).name,creditHours:co.credits},
     program:{id:p.id,code:p.code,name:p.name,type:p.type},
     audiences:o.audiences.map(id=>{ const c=cohort(id); return {id,name:cohortName(c),type:p.type,level:c.level,major:c.majorId?major(c.majorId).name:null}; }),
@@ -483,7 +487,7 @@ function ask(o){
 /* ============ Views ============ */
 function renderRail(){
   const pending=S.offerings.filter(o=>o.offered&&sendState(o)[1]!=='ok').length;
-  $('#rail').innerHTML=`<div class="brand"><h1>إدارة المواد الدراسية</h1><small>${esc(S.faculty.name)} · ${esc(S.term.name)}</small></div>`+
+  $('#rail').innerHTML=`<div class="brand"><h1>إدارة المواد الدراسية</h1><small>${esc(S.university)} · ${esc(S.faculty.name)} · ${esc(S.term.name)}</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${k==='outbox'&&pending?`<span class="badge">${pending}</span>`:''}</a>`).join('')+
     `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">${VERSION}</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
@@ -546,7 +550,7 @@ function viewCatalog(){
   </tbody></table></div>`;
 }
 /* ============ Master data (البيانات الأساسية) ============ */
-const MTABS=[['faculty','الكلية'],['depts','الأقسام العلمية'],['programs','البرامج ومجموعات الطلاب'],['majors','الشعب'],['staff','أعضاء هيئة التدريس'],['ranks','الدرجات الوظيفية'],['terms','الفصول الدراسية'],['equipment','الأدوات'],['fixed','أنواع الحصص وطرق التدريس']];
+const MTABS=[['faculty','الجامعة والكليات'],['depts','الأقسام العلمية'],['programs','البرامج ومجموعات الطلاب'],['majors','الشعب'],['staff','أعضاء هيئة التدريس'],['ranks','الدرجات الوظيفية'],['terms','الفصول الدراسية'],['equipment','الأدوات'],['fixed','أنواع الحصص وطرق التدريس']];
 const rankOf=p=>p&&p.rank?find(S.ranks,p.rank):null;
 const maxFor=p=>{ const r=rankOf(p); return r?r.maxLoad:S.settings.maxLoad[p.role]; };
 const staffUse=pid=>loadOf(pid).items.length;
@@ -557,11 +561,12 @@ function viewMaster(){
   const tabs=`<div class="inline" role="group" aria-label="القوائم" style="margin-bottom:14px">${MTABS.map(([k,t])=>`<button class="btn sm ${k===tab?'primary':''}" data-act="mtab" data-v="${k}" aria-pressed="${k===tab}">${t}</button>`).join('')}</div>`;
   const tbl=(head,rows,add)=>`<div class="tbl-wrap"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows||`<tr><td colspan="${head.length}" class="meta">مفيش بيانات.</td></tr>`}</tbody></table></div>${add?`<div class="inline" style="margin-top:10px">${add}</div>`:''}`;
   let body='';
-  if(tab==='faculty') body=`<section class="panel"><h3>الكلية</h3><div class="tbl-wrap"><table><tbody>
-    <tr><th>الجامعة</th><td>${esc(S.university)}</td></tr><tr><th>الكلية</th><td>${esc(S.faculty.name)}</td></tr><tr><th>الترم الحالي</th><td>${esc(S.term.name)} · ${S.term.weeks} أسبوع</td></tr>
-    <tr><th>الأقسام</th><td class="num">${S.depts.length}</td></tr><tr><th>البرامج</th><td class="num">${S.programs.length}</td></tr><tr><th>مجموعات الطلاب</th><td class="num">${S.cohorts.length} · ${S.cohorts.reduce((a,c)=>a+c.students,0).toLocaleString('ar-EG')} طالب</td></tr><tr><th>أعضاء هيئة التدريس</th><td class="num">${S.people.length}</td></tr>
-    </tbody></table></div><div class="inline" style="margin-top:10px"><button class="btn sm" data-act="editFaculty">تعديل الاسم</button></div>
-    <p class="hint">النظام شغال على كلية واحدة دلوقتي، وكل البيانات مربوطة بالكلية عشان كليات تانية تتضاف بعدين.</p></section>`;
+  if(tab==='faculty') body=`<section class="panel"><h3>${esc(S.university)}</h3>
+    <div class="tbl-wrap"><table><thead><tr><th>الكلية</th><th>الحالة</th><th>الأقسام</th><th>البرامج</th><th>الطلاب</th><th>أعضاء هيئة التدريس</th></tr></thead><tbody>
+    ${S.faculties.map(f=>{ const cur=f.id===S.faculty.id; return `<tr><td><b>${esc(f.name)}</b></td><td>${cur?pill('مستخدمة دلوقتي','ok'):pill('مش مفعّلة','off')}</td><td class="num">${cur?S.depts.length:'—'}</td><td class="num">${cur?S.programs.length:'—'}</td><td class="num">${cur?S.cohorts.reduce((a,c)=>a+c.students,0).toLocaleString('ar-EG'):'—'}</td><td class="num">${cur?S.people.length:'—'}</td></tr>`; }).join('')}
+    </tbody></table></div>
+    <div class="inline" style="margin-top:10px"><button class="btn sm" data-act="editFaculty">تعديل الأسماء</button></div>
+    <p class="hint">الترم الحالي: ${esc(S.term.name)} · ${S.term.weeks} أسبوع. النظام شغال على ${esc(S.faculty.name)} بس دلوقتي، وكل الأقسام والبرامج والمواد وأعضاء هيئة التدريس مربوطين بالكلية، فكليات تانية في ${esc(S.university)} ممكن تتضاف بعدين ببياناتها لوحدها.</p></section>`;
   if(tab==='depts') body=tbl(['القسم','مستخدم في',''],S.depts.map(d=>{ const nc=S.courses.filter(c=>c.dept===d.id).length, np=S.people.filter(p=>p.dept===d.id).length;
     return mRow(esc(d.name),`${nc} مادة · ${np} عضو هيئة تدريس`,`<button class="btn sm" data-act="editDept" data-id="${d.id}">تعديل</button>${delBtn('delDept',d.id,nc+np,'القسم ليه مواد أو أعضاء هيئة تدريس')}`); }).join(''),`<button class="btn primary" data-act="addDept">إضافة قسم</button>`);
   if(tab==='majors') body=tbl(['الشعبة','مستخدمة في',''],S.majors.map(m=>{ const ps=S.programs.filter(p=>p.majors.includes(m.id));
@@ -584,7 +589,7 @@ async function nameDialog(title,value=''){ const v=await ask({title,fields:[{id:
 async function staffDialog(p){
   const v=await ask({title:p?`تعديل ${p.name}`:'عضو هيئة تدريس جديد',fields:[{id:'name',label:'الاسم',required:true,value:p?.name||''},{id:'rank',label:'الدرجة',type:'select',value:p?.rank||'lect',options:S.ranks.map(r=>[r.id,r.name])},{id:'dept',label:'القسم',type:'select',value:p?.dept||S.depts[0].id,options:S.depts.map(d=>[d.id,d.name])}],ok:'حفظ'});
   if(!v) return; const role=find(S.ranks,v.rank).kind;
-  if(p) Object.assign(p,{name:v.name,rank:v.rank,dept:v.dept,role}); else S.people.push({id:nid('s'),name:v.name,rank:v.rank,dept:v.dept,role});
+  if(p) Object.assign(p,{name:v.name,rank:v.rank,dept:v.dept,role}); else S.people.push({id:nid('s'),facultyId:S.faculty.id,name:v.name,rank:v.rank,dept:v.dept,role});
 }
 async function rankDialog(r){
   const v=await ask({title:r?`تعديل ${r.name}`:'درجة وظيفية جديدة',fields:[{id:'name',label:'الاسم',required:true,value:r?.name||''},{id:'kind',label:'النوع',type:'select',value:r?.kind||'doctor',options:[['doctor','عضو هيئة تدريس'],['ta','هيئة معاونة']]},{id:'maxLoad',label:'أقصى عبء أسبوعي (ساعة)',type:'number',value:String(r?.maxLoad??12),min:1}],ok:'حفظ'});
@@ -600,7 +605,7 @@ async function termDialog(t){
 function syncTerm(){ const t=find(S.terms,S.termId)||S.terms[0]; S.termId=t.id; S.term={name:t.name,semester:t.semester,weeks:t.weeks,start:t.start}; }
 const MACT={
   mtab(d){ S.ui.mtab=d.v; },
-  async editFaculty(){ const v=await ask({title:'الكلية',fields:[{id:'u',label:'الجامعة',required:true,value:S.university},{id:'f',label:'الكلية',required:true,value:S.faculty.name}],ok:'حفظ'}); if(!v) return; S.university=v.u; S.faculty.name=v.f; },
+  async editFaculty(){ const v=await ask({title:'الجامعة والكلية',fields:[{id:'u',label:'الجامعة',required:true,value:S.university},{id:'f',label:'الكلية',required:true,value:S.faculty.name}],ok:'حفظ'}); if(!v) return; S.university=v.u; S.faculty.name=v.f; const f=find(S.faculties,S.faculty.id); if(f) f.name=v.f; },
   async editDept(d){ const x=dept(d.id); const n=await nameDialog('تعديل القسم',x.name); if(n) x.name=n; },
   delDept(d){ S.depts=S.depts.filter(x=>x.id!==d.id); },
   async editMajor(d){ const x=major(d.id); const n=await nameDialog('تعديل الشعبة',x.name); if(n) x.name=n; },
@@ -716,7 +721,7 @@ function syncHash(){ const h=location.hash.slice(1); S.ui.view=NAV.some(([k])=>k
 const freshUI=()=>({view:'offer',sel:{program:'ar',level:1,major:''},drawer:null,catFilter:{dept:'',q:''},outFilter:'all',preview:null});
 function boot(fresh){
   const saved=fresh?null:store.get(SAVE_KEY);
-  if(saved&&saved.version===3){ S={...saved,ui:freshUI()}; return; }
+  if(saved&&saved.version===4){ S={...saved,ui:freshUI()}; return; }
   S=seed(); S.ui=freshUI();
   for(const o of S.offerings) if(o._send){ send(o); o.sentAt='10 نوفمبر'; delete o._send; }
   S.lastSendAt='10 نوفمبر';
@@ -808,10 +813,10 @@ const ACT={
     if(!v) return;
     if(S.courses.some(c=>c.code.toLowerCase()===v.code.toLowerCase())){ toast(`الكود ${v.code} موجود بالفعل`); return; }
     const sessions={}, reqs={}; for(const k of v.kinds){ sessions[k]={hours:2,perWeek:1,count:Math.max(1,Number(k==='lecture'?v.lectures:v.others)||10),startWeek:k==='lecture'?1:3}; reqs[k]=[]; }
-    S.courses.push({id:nid('c'),code:v.code,name:v.name,dept:v.dept,semester:Number(v.semester),credits:Number(v.credits)||3,sessions,reqs});
+    S.courses.push({id:nid('c'),facultyId:S.faculty.id,code:v.code,name:v.name,dept:v.dept,semester:Number(v.semester),credits:Number(v.credits)||3,sessions,reqs});
     render(); toast('اتضافت للكتالوج. اطرحها من زرار "طرح لجمهور".');
   },
-  async addDept(){ const v=await ask({title:'قسم جديد',fields:[{id:'name',label:'اسم القسم',required:true}],ok:'إضافة'}); if(!v) return; S.depts.push({id:nid('dp'),name:v.name}); render(); },
+  async addDept(){ const v=await ask({title:'قسم جديد',fields:[{id:'name',label:'اسم القسم',required:true}],ok:'إضافة'}); if(!v) return; S.depts.push({id:nid('dp'),name:v.name,facultyId:S.faculty.id}); render(); },
   async addMajor(){ const v=await ask({title:'شعبة جديدة',fields:[{id:'name',label:'اسم الشعبة',required:true}],ok:'إضافة'}); if(!v) return; S.majors.push({id:nid('mj'),name:v.name}); render(); toast('اتضافت. فعّلها في البرامج اللي فيها الشعبة دي.'); },
   async addProgram(){ await programDialog(null); },
   async editProgram(d){ await programDialog(program(d.id)); }
@@ -827,7 +832,7 @@ async function programDialog(p){
   if(!v) return;
   const data={name:v.name,code:v.code.toUpperCase(),type:v.type,levels:Math.max(0,Number(v.levels)||0),majorsFrom:Number(v.majorsFrom)||null,majors:v.majors,defaultMode:v.mode};
   if(!data.majorsFrom) data.majors=[];
-  if(p) Object.assign(p,data); else S.programs.push({id:nid('p'),...data});
+  if(p) Object.assign(p,data); else S.programs.push({id:nid('p'),facultyId:S.faculty.id,...data});
   const before=S.cohorts; S.cohorts=buildCohorts(S,{},before);
   const lost=S.offerings.filter(o=>o.audiences.some(a=>!cohort(a)));
   for(const o of lost) o.audiences=o.audiences.filter(a=>cohort(a));
