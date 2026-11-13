@@ -171,7 +171,7 @@ const ORD=['الأولى','الثانية','الثالثة','الرابعة','ا
 /* Same equipment keys as the rooms system; the rooms system owns this list and sends updates. */
 let EQ={projector:'بروجكتور',mic:'مايك وسماعات',ac:'تكييف',internet:'إنترنت',smartboard:'سبورة ذكية',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',excel:'Microsoft Excel',spss:'SPSS',accsoft:'برنامج محاسبي (ERP)'};
 const NAV=[['offer','المواد حسب البرنامج والفرقة'],['catalog','تفاصيل المواد'],['plans','الخطط الدراسية'],['master','البيانات الأساسية'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
-const VERSION='النسخة: 14 نوفمبر 18:00';
+const VERSION='النسخة: 14 نوفمبر 19:00';
 const PTYPE_ITEM={core:'إجبارية',elective:'اختيارية'};
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
@@ -436,7 +436,7 @@ function issuesOf(o){
   return {bad,warn};
 }
 function sendState(o){
-  if(!o.offered) return ['مش مطروحة','off'];
+  if(!o.offered) return ['مش متضافة للترم','off'];
   if(!o.sent) return ['ماتبعتتش','acc'];
   return o.sent===JSON.stringify(payload(o))?['اتبعتت لنظام القاعات','ok']:['اتغيرت بعد الإرسال','warn'];
 }
@@ -580,23 +580,23 @@ function viewOffer(){
   const gaps=planGaps(), pl=planOf(p.id), pk=pkey(u.level,S.term.semester,'');
   const nElec=gaps.all.filter(g=>g.type==='elective').length, pick=pl.picks[pk];
   const gapRow=g=>{ const co=course(g.courseId); const scope=g.majors.has('*')?'كل الطلاب':[...g.majors].map(m=>esc(major(m).name)).join('، ');
-    return `<tr><td><b>${esc(co.code)}</b> · ${esc(co.name)}</td><td>${pill(PTYPE_ITEM[g.type],g.type==='core'?'acc':'off')}</td><td class="meta">${scope}</td><td class="num">${co.credits}</td><td class="num">${g.aud.reduce((a,id)=>a+cohort(id).students,0)}</td><td>${g.prereq.length?g.prereq.map(x=>`<span class="tag">${esc(course(x).code)}</span>`).join(''):'<span class="meta">—</span>'}</td><td><button class="btn sm primary" data-act="planOffer" data-c="${g.courseId}">طرح</button></td></tr>`; };
-  const planPanel=gaps.all.length?(gaps.missing.length?`<section class="panel plan-gaps" aria-labelledby="h-gap" style="margin-bottom:16px"><div class="inline" style="justify-content:space-between"><h3 id="h-gap" style="margin:0">مقترح من الخطة الدراسية · ${gaps.missing.length} مادة لسه ماتطرحتش</h3>${gaps.missing.some(g=>g.type==='core')?`<button class="btn sm primary" data-act="planOfferCore">طرح كل الإجباري (${gaps.missing.filter(g=>g.type==='core').length})</button>`:''}</div>
-    <p class="hint" style="margin:4px 0 10px">${esc(pl.bylaw||'الخطة الدراسية')} · ${esc(levelLabel(p,u.level))} · ${semName(S.term.semester)}.${nElec?` الاختياري: الطالب بياخد ${pick||'؟'} من ${nElec}، فاطرح اللي هيتفتح بس.`:''} النظام بيقترح، وانت اللي بتطرح.</p>
+    return `<tr><td><b>${esc(co.code)}</b> · ${esc(co.name)}</td><td>${pill(PTYPE_ITEM[g.type],g.type==='core'?'acc':'off')}</td><td class="meta">${scope}</td><td class="num">${co.credits}</td><td class="num">${g.aud.reduce((a,id)=>a+cohort(id).students,0)}</td><td>${g.prereq.length?g.prereq.map(x=>`<span class="tag">${esc(course(x).code)}</span>`).join(''):'<span class="meta">—</span>'}</td><td><button class="btn sm primary" data-act="planOffer" data-c="${g.courseId}">إضافة للترم</button></td></tr>`; };
+  const planPanel=gaps.all.length?(gaps.missing.length?`<section class="panel plan-gaps" aria-labelledby="h-gap" style="margin-bottom:16px"><div class="inline" style="justify-content:space-between"><h3 id="h-gap" style="margin:0">مقترح من الخطة الدراسية · ${gaps.missing.length} مادة لسه ماتضافتش للترم</h3>${gaps.missing.some(g=>g.type==='core')?`<button class="btn sm primary" data-act="planOfferCore">إضافة كل الإجباري للترم (${gaps.missing.filter(g=>g.type==='core').length})</button>`:''}</div>
+    <p class="hint" style="margin:4px 0 10px">${esc(pl.bylaw||'الخطة الدراسية')} · ${esc(levelLabel(p,u.level))} · ${semName(S.term.semester)}.${nElec?` الاختياري: الطالب بياخد ${pick||'؟'} من ${nElec}، فضيف للترم اللي هيتفتح بس.`:''} النظام بيقترح، وانت اللي بتضيف.</p>
     <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>النوع</th><th>لمين</th><th>س.م</th><th>الطلاب</th><th>متطلب سابق</th><th></th></tr></thead><tbody>${gaps.missing.map(gapRow).join('')}</tbody></table></div></section>`
-    :`<div class="okbox" style="margin-bottom:16px">كل مواد الخطة الدراسية (${gaps.all.length}) للمجموعات دي في ${semName(S.term.semester)} اتطرحت.</div>`)
+    :`<div class="okbox" style="margin-bottom:16px">كل مواد الخطة الدراسية (${gaps.all.length}) للمجموعات دي في ${semName(S.term.semester)} اتضافت للترم.</div>`)
     :`<div class="infobox" style="margin-bottom:16px">مفيش مواد في الخطة الدراسية للمجموعات دي في ${semName(S.term.semester)}. <a href="#plans">عرّف الخطة</a></div>`;
   const progTabs=progTabsHtml(p.id,'selProgram');
   const levelTabs=p.levels?Array.from({length:p.levels},(_,i)=>i+1).map(l=>`<button class="btn sm ${l===u.level?'primary':''}" data-act="selLevel" data-v="${l}" aria-pressed="${l===u.level}">${levelName(p,l)}</button>`).join(''):'';
   const majorChips=p.levels&&p.majorsFrom&&u.level>=p.majorsFrom?`<span class="meta" style="margin-inline-start:8px">الشعبة:</span><button class="btn sm ${!u.major?'primary':''}" data-act="selMajor" data-v="">كل الشعب</button>${p.majors.map(m=>`<button class="btn sm ${u.major===m?'primary':''}" data-act="selMajor" data-v="${m}">${esc(major(m).name)}</button>`).join('')}`:'';
-  return `<div class="page-head"><div><h2>المواد حسب البرنامج والفرقة</h2><p>${esc(S.faculty.name)} · المواد المطروحة لكل مجموعة طلاب في ${esc(S.term.name)}، ومجموعاتها ومحاضريها، وحالة إرسالها لنظام القاعات.</p></div>
-  <div class="inline"><button class="btn" data-act="offerHere">طرح مادة لهنا</button><button class="btn primary" data-act="sendSel" ${notSent?'':'disabled'}>إرسال الجاهز لنظام القاعات (${notSent})</button></div></div>
+  return `<div class="page-head"><div><h2>المواد حسب البرنامج والفرقة</h2><p>${esc(S.faculty.name)} · المواد المتضافة لكل مجموعة طلاب في ${esc(S.term.name)}، ومجموعاتها ومحاضريها، وحالة إرسالها لنظام القاعات.</p></div>
+  <div class="inline"><button class="btn" data-act="offerHere">إضافة مادة للترم</button><button class="btn primary" data-act="sendSel" ${notSent?'':'disabled'}>إرسال الجاهز لنظام القاعات (${notSent})</button></div></div>
   <div class="tabs" role="group" aria-label="البرامج">${progTabs}</div>
   ${levelTabs||majorChips?`<div class="inline" style="margin-bottom:12px" role="group" aria-label="الفرقة والشعبة">${levelTabs}${majorChips}</div>`:''}
   <div class="meta" style="margin-bottom:12px">مجموعات الطلاب: ${list.map(c=>`<span class="tag">${esc(cohortName(c,false))} · <b class="num">${c.students}</b> طالب</span>`).join('')||'—'}</div>
   <div class="tiles">
     <div class="tile"><b>${students}</b><span>طالب</span></div>
-    <div class="tile"><b>${act.length}</b><span>مادة مطروحة</span></div>
+    <div class="tile"><b>${act.length}</b><span>مادة متضافة للترم</span></div>
     <div class="tile"><b>${credits}</b><span>ساعة معتمدة</span></div>
     <div class="tile"><b>${sess}</b><span>حصة محتاجة مكان</span></div>
     <div class="tile ${blocked?'bad':'ok'}"><b>${blocked}</b><span>مادة ناقصها بيانات</span></div>
@@ -606,25 +606,25 @@ function viewOffer(){
   ${offs.map(o=>{ const co=course(o.courseId), is=issuesOf(o), [st,k]=sendState(o);
     return `<tr class="click" data-act="openOff" data-id="${o.id}" tabindex="0"${o.offered?'':' style="opacity:.6"'}><td><b>${esc(co.code)}</b> · ${esc(co.name)}${isElective(o)?' '+pill('اختيارية','off'):''}${inPlan(o)?'':' '+pill('من برة الخطة','warn')}</td><td>${esc(dept(co.dept).name)}</td><td class="num">${co.credits}</td>
     <td>${o.audiences.length>1?pill('مشتركة','acc')+' ':''}<span class="meta">${o.audiences.map(id=>esc(cohortName(cohort(id),false))).join('، ')}</span></td><td class="num">${o.students}${isElective(o)?'<div class="meta">متوقع</div>':''}</td><td><div class="sess">${groupsSummary(o)}</div></td>
-    <td>${pill(st,k)}${o.sentAt&&o.offered?`<div class="meta">${esc(o.sentAt)}</div>`:''}</td><td>${allocCell(o)}</td><td>${is.bad.map(x=>`<span class="tag bad">${esc(x)}</span>`).join('')}${is.warn.map(x=>`<span class="tag warn">${esc(x)}</span>`).join('')}</td></tr>`; }).join('')||'<tr><td colspan="9" class="meta">مفيش مواد مطروحة لمجموعات الطلاب دي في الترم ده. استخدم "طرح مادة لهنا".</td></tr>'}
+    <td>${pill(st,k)}${o.sentAt&&o.offered?`<div class="meta">${esc(o.sentAt)}</div>`:''}</td><td>${allocCell(o)}</td><td>${is.bad.map(x=>`<span class="tag bad">${esc(x)}</span>`).join('')}${is.warn.map(x=>`<span class="tag warn">${esc(x)}</span>`).join('')}</td></tr>`; }).join('')||'<tr><td colspan="9" class="meta">مفيش مواد متضافة لمجموعات الطلاب دي في الترم ده. استخدم "إضافة مادة للترم".</td></tr>'}
   </tbody></table></div>`;
 }
 function viewCatalog(){
   const f=S.ui.catFilter;
   const list=S.courses.filter(c=>(!f.dept||c.dept===f.dept)&&(!f.q||c.name.includes(f.q)||c.code.toLowerCase().includes(f.q.toLowerCase())));
-  return `<div class="page-head"><div><h2>تفاصيل المواد</h2><p>كل مواد اللائحة في ${esc(S.faculty.name)}: القسم المالك، والساعات، وخطة التدريس. المادة الواحدة ممكن تتطرح لأكتر من برنامج.</p></div><button class="btn primary" data-act="newCourse">مادة جديدة</button></div>
+  return `<div class="page-head"><div><h2>تفاصيل المواد</h2><p>كل مواد اللائحة في ${esc(S.faculty.name)}: القسم المالك، والساعات، وخطة التدريس. المادة الواحدة ممكن تتضاف للترم لأكتر من برنامج.</p></div><button class="btn primary" data-act="newCourse">مادة جديدة</button></div>
   <div class="filters">
     <input type="text" data-chg="cat" data-k="q" value="${esc(f.q)}" placeholder="بحث بالاسم أو الكود" aria-label="بحث">
     <select data-chg="cat" data-k="dept" aria-label="القسم"><option value="">كل الأقسام</option>${S.depts.map(d=>`<option value="${d.id}"${f.dept===d.id?' selected':''}>${esc(d.name)}</option>`).join('')}</select>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>الكود</th><th>المادة</th><th>القسم</th><th>الفصل</th><th>س.م</th><th>خطة التدريس</th><th>في الخطط الدراسية</th><th>مطروحة لـ</th><th></th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>الكود</th><th>المادة</th><th>القسم</th><th>الفصل</th><th>س.م</th><th>خطة التدريس</th><th>في الخطط الدراسية</th><th>متضافة للترم لـ</th><th></th></tr></thead><tbody>
   ${list.map(c=>{ const offs=S.offerings.filter(o=>o.courseId===c.id);
     const inPl=[]; for(const pl of S.plans){ const pr=program(pl.programId); if(!pr) continue; const seen=new Set(); for(const i of pl.items) if(i.courseId===c.id&&!seen.has(`${i.level}|${i.sem}`)){ seen.add(`${i.level}|${i.sem}`); inPl.push(`<span class="tag" title="${esc(pr.name)} · ${esc(levelLabel(pr,i.level))} · ${semName(i.sem)}">${esc(pr.code)}${i.level?' '+i.level:''} · ف${i.sem}${i.type==='elective'?' · اختياري':''}</span>`); } }
     return `<tr><td class="num"><b>${esc(c.code)}</b></td><td>${esc(c.name)}</td><td>${esc(dept(c.dept).name)}</td><td>${c.semester===1?'الأول':'الثاني'}</td><td class="num">${c.credits}</td>
     <td>${Object.entries(c.sessions).map(([k,s])=>{ const w=weeksOf(s); return `<span class="tag">${s.count} ${s.count>1?KINDS_PL[k]:KINDS[k]} · ${s.hours} س · أ${w.from}–${w.to}</span>`; }).join('')}</td>
     <td>${inPl.join('')||'<span class="meta">مش في أي خطة</span>'}</td>
-    <td>${offs.map(o=>`<button class="tag" style="cursor:pointer${o.offered?'':';opacity:.6'}" data-act="openOff" data-id="${o.id}">${esc(audNames(o))}</button>`).join('')||'<span class="meta">مش مطروحة</span>'}</td>
-    <td>${c.semester===S.term.semester?`<button class="btn sm" data-act="offerCourse" data-id="${c.id}">طرح لجمهور</button>`:''}</td></tr>`; }).join('')}
+    <td>${offs.map(o=>`<button class="tag" style="cursor:pointer${o.offered?'':';opacity:.6'}" data-act="openOff" data-id="${o.id}">${esc(audNames(o))}</button>`).join('')||'<span class="meta">مش متضافة للترم</span>'}</td>
+    <td>${c.semester===S.term.semester?`<button class="btn sm" data-act="offerCourse" data-id="${c.id}">إضافة للترم</button>`:''}</td></tr>`; }).join('')}
   </tbody></table></div>`;
 }
 /* ============ Study plans (الخطط الدراسية) ============ */
@@ -646,7 +646,7 @@ function viewPlans(){
       ${items.length?`<div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>المادة</th><th>س.م</th><th>النوع</th>${hasMaj?'<th>الشعبة</th>':''}<th>متطلب سابق</th><th></th></tr></thead><tbody>${items.map(row).join('')}</tbody></table></div>`:'<div class="meta" style="margin:8px 0">مفيش مواد لسه.</div>'}
       <div class="inline" style="margin-top:8px"><button class="btn sm" data-act="planAdd" data-l="${l||''}" data-s="${s}">إضافة مادة</button>${elec.length?`<label class="meta">الطالب بياخد <input type="number" min="1" max="${elec.length}" style="width:56px" data-chg="planPick" data-k="${k}" value="${pl.picks[k]||''}" aria-label="عدد المواد الاختيارية"> من ${elec.length} اختياري</label>`:''}</div></div>`;
   };
-  return `<div class="page-head"><div><h2>الخطط الدراسية</h2><p>المواد اللي طلاب كل برنامج بيدرسوها في كل ${p.levels?(p.type==='credit'?'مستوى':'فرقة'):'سنة'} وكل فصل دراسي، حسب اللائحة. شاشة الطرح بتقترح منها كل ترم.</p></div></div>
+  return `<div class="page-head"><div><h2>الخطط الدراسية</h2><p>المواد اللي طلاب كل برنامج بيدرسوها في كل ${p.levels?(p.type==='credit'?'مستوى':'فرقة'):'سنة'} وكل فصل دراسي، حسب اللائحة. وشاشة المواد حسب البرنامج والفرقة بتقترح منها كل ترم.</p></div></div>
   <div class="tabs" role="group" aria-label="البرامج">${progTabsHtml(pid,'planProg')}</div>
   <div class="inline" style="margin-bottom:14px;justify-content:space-between"><div><b>${esc(pl.bylaw||'من غير اسم لائحة')}</b> <button class="btn sm ghost" data-act="planBylaw">تعديل اسم اللائحة</button></div><span class="meta">${all.length} مادة في الخطة · ${coreH} س.م إجباري</span></div>
   ${levels.map(l=>`<section class="panel" style="margin-bottom:14px" aria-label="${esc(levelLabel(p,l))}"><h3>${esc(l?levelLabel(p,l):p.name)}${p.majorsFrom&&l>=p.majorsFrom?` <span class="meta">· فيها شعب: ${p.majors.map(m=>esc(major(m).name)).join('، ')}</span>`:''}</h3><div style="display:grid;gap:12px">${sems.map(s=>semBox(l,s)).join('')}</div></section>`).join('')}`;
@@ -664,7 +664,7 @@ async function planItemDialog(pl,i,l,s){
   const data={courseId:v.c,type:v.type,major:hasMaj?(v.major||null):null,prereq:v.pre&&v.pre!==v.c?[v.pre]:[]};
   if(pl.items.some(x=>x!==i&&x.courseId===data.courseId&&(x.level||null)===l&&x.sem===s&&(x.major||null)===data.major)){ toast('المادة دي موجودة بالفعل في نفس المكان من الخطة'); return; }
   if(i) Object.assign(i,data); else pl.items.push({id:nid('pi'),level:l,sem:s,...data});
-  toast(i?'اتعدلت':'اتضافت للخطة. هتظهر كاقتراح في شاشة الطرح.');
+  toast(i?'اتعدلت':'اتضافت للخطة. هتظهر كاقتراح في شاشة المواد حسب البرنامج والفرقة.');
 }
 const PACT={
   planProg(d){ S.ui.planProg=d.id; },
@@ -673,9 +673,9 @@ const PACT={
   async planEdit(d){ const pl=planOf(S.ui.planProg), i=pl.items.find(x=>x.id===d.id); await planItemDialog(pl,i,i.level||null,i.sem); },
   planDel(d){ const pl=planOf(S.ui.planProg); const i=pl.items.find(x=>x.id===d.id); pl.items=pl.items.filter(x=>x!==i);
     const n=S.offerings.filter(o=>o.offered&&o.courseId===i.courseId&&o.audiences.some(a=>itemCohorts(pl.programId,i).some(c=>c.id===a))).length;
-    toast(n?`اتشالت من الخطة. الطرح الحالي مكمل، وهيظهر عليه "من برة الخطة".`:'اتشالت من الخطة'); },
+    toast(n?`اتشالت من الخطة. المادة لسه في الترم، وهيظهر عليها "من برة الخطة".`:'اتشالت من الخطة'); },
   async planOffer(d){ const g=planGaps().missing.find(x=>x.courseId===d.c); if(!g) return; await offerFromPlan(g,true); },
-  async planOfferCore(){ const list=planGaps().missing.filter(g=>g.type==='core'); for(const g of list) await offerFromPlan(g,false); toast(`اتطرحت ${list.length} مادة. حدد المحاضرين لكل واحدة.`); }
+  async planOfferCore(){ const list=planGaps().missing.filter(g=>g.type==='core'); for(const g of list) await offerFromPlan(g,false); toast(`اتضافت ${list.length} مادة للترم. حدد المحاضرين لكل واحدة.`); }
 };
 async function offerFromPlan(g,open){
   let students=null;
@@ -683,11 +683,11 @@ async function offerFromPlan(g,open){
     const {p}=selection(), pl=planOf(p.id), sum=g.aud.reduce((a,id)=>a+cohort(id).students,0);
     const n=planGaps().all.filter(x=>x.type==='elective').length, pick=pl.picks[pkey(S.ui.sel.level,S.term.semester,'')]||1;
     const guess=Math.ceil(sum*pick/Math.max(1,n));
-    const v=await ask({title:`طرح ${course(g.courseId).code} · مادة اختيارية`,body:`<p class="meta">الطلاب هيختاروا ${pick} من ${n} مواد اختيارية، فمش كل الـ ${sum} طالب هياخدوها. اكتب العدد المتوقع لحد ما التسجيل الفعلي يوصل.</p>`,fields:[{id:'n',label:'عدد الطلاب المتوقع',type:'number',value:String(guess),min:1,required:true}],ok:'طرح'});
+    const v=await ask({title:`إضافة ${course(g.courseId).code} للترم · مادة اختيارية`,body:`<p class="meta">الطلاب هيختاروا ${pick} من ${n} مواد اختيارية، فمش كل الـ ${sum} طالب هياخدوها. اكتب العدد المتوقع لحد ما التسجيل الفعلي يوصل.</p>`,fields:[{id:'n',label:'عدد الطلاب المتوقع',type:'number',value:String(guess),min:1,required:true}],ok:'إضافة للترم'});
     if(!v) return; students=Math.max(1,Number(v.n)||guess);
   }
   const o=makeOffering(g.courseId,g.aud); if(students) o.students=students;
-  if(open){ S.ui.drawer=o.id; render(); toast('اتطرحت من الخطة. حدد المحاضرين وراجع المجموعات.'); }
+  if(open){ S.ui.drawer=o.id; render(); toast('اتضافت للترم من الخطة. حدد المحاضرين وراجع المجموعات.'); }
 }
 
 /* ============ Master data (البيانات الأساسية) ============ */
@@ -756,7 +756,7 @@ function viewOutbox(){
   const f=S.ui.outFilter;
   const list=S.offerings.filter(o=>o.offered&&semOf(o)===S.term.semester).filter(o=>f==='all'||sendState(o)[1]===f);
   const pv=S.ui.preview?S.offerings.find(o=>o.id===S.ui.preview):null;
-  return `<div class="page-head"><div><h2>الإرسال لنظام القاعات</h2><p>كل طرح بيتبعت كقائمة حصص: مجموعات المحاضرة والسكاشن والمعامل، وأسابيعها، ومتطلباتها. أي تغيير بعد الإرسال لازم يتبعت كتحديث.</p></div>
+  return `<div class="page-head"><div><h2>الإرسال لنظام القاعات</h2><p>كل مادة متضافة للترم بتتبعت كقائمة حصص: مجموعات المحاضرة والسكاشن والمعامل، وأسابيعها، ومتطلباتها. أي تغيير بعد الإرسال لازم يتبعت كتحديث.</p></div>
   <div class="inline"><button class="btn sm ${f==='all'?'primary':''}" data-act="outFilter" data-v="all">الكل</button><button class="btn sm ${f==='acc'?'primary':''}" data-act="outFilter" data-v="acc">ماتبعتتش</button><button class="btn sm ${f==='warn'?'primary':''}" data-act="outFilter" data-v="warn">اتغيرت</button><button class="btn sm ${f==='ok'?'primary':''}" data-act="outFilter" data-v="ok">اتبعتت</button></div></div>
   <div class="cols">
     <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>الجمهور</th><th>الحصص</th><th>الحالة</th><th>التوزيع</th><th></th></tr></thead><tbody>
@@ -778,7 +778,7 @@ function viewSettings(){
     <p class="hint" style="margin-top:16px">الحد الأقصى للعبء بيتحسب حسب الدرجة الوظيفية، ودي جاية من module شئون أعضاء هيئة التدريس.</p>
   </section>
   <section class="panel"><h3>الحدود مع نظام القاعات</h3>
-    <p class="meta" style="margin-top:0">النظام ده مسؤول عن الهيكل الأكاديمي والمواد وطرحها ومجموعاتها ومحاضريها ومتطلباتها. نظام القاعات مسؤول عن الأماكن والمواعيد والتوزيع، والنظام هناك بيقترح والموظف بيأكد.</p>
+    <p class="meta" style="margin-top:0">النظام ده مسؤول عن الهيكل الأكاديمي والمواد وإضافتها للترم ومجموعاتها ومحاضريها ومتطلباتها. نظام القاعات مسؤول عن الأماكن والمواعيد والتوزيع، والنظام هناك بيقترح والموظف بيأكد.</p>
     <p class="meta">تعارض الطلاب بيتحسب بمجموعة الطلاب ومجموعة المحاضرة: مجموعة 1 هي نفس الطلاب في كل المواد (افتراض، سؤال E4).</p>
   </section></div>`;
 }
@@ -807,13 +807,13 @@ function drawerOffering(o){
           <details${list.length<=6?' open':''}><summary>${list.length} ${KINDS_PL[kk]}</summary><div>${list.map(g=>`<div class="grp"><b>${esc(groupLabel(g.id,gs.nL))}</b><span class="num${g.students>S.settings.maxGroup[kk]?'" style="color:var(--warn)':''}">${g.students} طالب</span><select data-chg="groupStaff" data-id="${o.id}" data-g="${g.id}" aria-label="معيد ${esc(groupLabel(g.id,gs.nL))}">${opts([...tas,...doctors],staffOf(o,kk,g))}</select></div>`).join('')}</div></details>`}
       <div><div class="sec-title">المتطلبات</div>${reqs.map((q,i)=>`<div class="reqline"><span>${esc(EQ[q.eq]||q.eq)}</span><button class="toggle ${q.mandatory?'on':''}" data-act="toggleMand" data-co="${co.id}" data-k="${kk}" data-i="${i}" aria-pressed="${q.mandatory}">${q.mandatory?'إلزامي':'اختياري'}</button><button class="btn sm ghost" data-act="delReq" data-co="${co.id}" data-k="${kk}" data-i="${i}" aria-label="حذف ${esc(EQ[q.eq])}">حذف</button>${q.mandatory?`<input type="text" data-chg="reqReason" data-co="${co.id}" data-k="${kk}" data-i="${i}" value="${esc(q.reason)}" placeholder="سبب الإلزام (مطلوب)" aria-label="سبب إلزام ${esc(EQ[q.eq])}"${q.reason?'':' style="border-color:var(--bad)"'}>`:''}</div>`).join('')||'<div class="meta">مفيش متطلبات.</div>'}
         <div class="inline" style="margin-top:6px"><select id="add-${co.id}-${kk}" aria-label="متطلب جديد">${Object.entries(EQ).filter(([e])=>!reqs.some(q=>q.eq===e)).map(([e,t])=>`<option value="${e}">${esc(t)}</option>`).join('')}</select><button class="btn sm" data-act="addReq" data-co="${co.id}" data-k="${kk}">إضافة</button></div>
-        <p class="hint" style="margin:4px 0 0">خطة التدريس والمتطلبات على مستوى المادة، فبتسري على كل طرح ليها.</p></div>
+        <p class="hint" style="margin:4px 0 0">خطة التدريس والمتطلبات على مستوى المادة، فبتسري عليها في كل البرامج.</p></div>
     </section>`;
   };
   const missing=Object.keys(KINDS).filter(x=>!co.sessions[x]);
   return `<div class="drawer-head"><div><div class="meta">${esc(co.code)} · ${esc(dept(co.dept).name)} · ${co.credits} س.م · ${esc(p.name)}</div><h3 id="dr-t">${esc(co.name)}</h3><div style="margin-top:4px">${pill(st,k)}${o.sentAt&&o.offered?` <span class="meta">آخر إرسال ${esc(o.sentAt)}</span>`:''}</div></div><button class="btn ghost" data-act="closeDrawer" aria-label="إغلاق">إغلاق</button></div>
   <div class="drawer-body" id="drawer-body">
-    ${!o.offered?`<div class="infobox">المادة مش مطروحة للجمهور ده الترم ده. <button class="btn sm" data-act="reoffer" data-id="${o.id}">رجّع طرحها</button></div>`:''}
+    ${!o.offered?`<div class="infobox">المادة اتحذفت من الترم للمجموعات دي. <button class="btn sm" data-act="reoffer" data-id="${o.id}">رجّعها للترم</button></div>`:''}
     <section class="card"><div class="sec-title">الجمهور</div><div>${o.audiences.map(id=>`<span class="tag">${esc(cohortName(cohort(id)))} · ${cohort(id).students}</span>`).join('')}</div>
       <div class="inline" style="margin-top:8px"><button class="btn sm" data-act="editAud" data-id="${o.id}">تعديل الجمهور</button><label>الطلاب <input type="number" min="1" style="width:100px" data-chg="students" data-id="${o.id}" value="${o.students}"></label>${o.students!==sum?`<button class="btn sm ghost" data-act="useSum" data-id="${o.id}">خليه مجموع الجمهور (${sum})</button>`:'<span class="hint">= مجموع الجمهور</span>'}</div></section>
     ${is.bad.length||is.warn.length?`<div class="issues">${is.bad.map(x=>`<div class="issue bad">${esc(x)}</div>`).join('')}${is.warn.map(x=>`<div class="issue warn">${esc(x)}</div>`).join('')}</div>`:'<div class="okbox">البيانات كاملة وجاهزة للإرسال.</div>'}
@@ -821,7 +821,7 @@ function drawerOffering(o){
     ${o.offered&&o.sent?`<section><div class="sec-title">حالة التوزيع في نظام القاعات</div><div class="card">${!ROOMS?'<div class="meta">نظام القاعات لسه مافتحش. افتحه من نفس الموقع عشان الحالة توصل هنا.</div>':allocOf(o).list.map(({s,a})=>`<div class="grp" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${KINDS[s.kind]} · ${esc(groupLabel(s.group,s.lg))}</b> <span class="meta">${a&&a.when?esc(a.when):''}${a&&a.room?' · '+esc(a.room)+' ('+esc(a.building)+')':''}</span></span>${a?pill(a.label,ALLOC_KIND[a.state]||'off'):'<span class="meta">لسه ماوصلش</span>'}</div>`).join('')}</div></section>`:''}
     ${Object.keys(co.sessions).map(kindBox).join('')}
     ${missing.length?`<div class="inline">${missing.map(x=>`<button class="btn sm" data-act="addKind" data-co="${co.id}" data-k="${x}">إضافة ${KINDS[x]}</button>`).join('')}</div>`:''}
-    <div class="inline">${o.offered&&k!=='ok'?`<button class="btn primary" data-act="sendOne" data-id="${o.id}" ${is.bad.length?'disabled':''}>${k==='warn'?'إرسال تحديث لنظام القاعات':'إرسال لنظام القاعات'}</button>`:''}<button class="btn" data-act="previewGo" data-id="${o.id}">شوف البيانات</button>${o.offered?`<button class="btn danger" data-act="unoffer" data-id="${o.id}">إلغاء الطرح</button>`:''}</div>
+    <div class="inline">${o.offered&&k!=='ok'?`<button class="btn primary" data-act="sendOne" data-id="${o.id}" ${is.bad.length?'disabled':''}>${k==='warn'?'إرسال تحديث لنظام القاعات':'إرسال لنظام القاعات'}</button>`:''}<button class="btn" data-act="previewGo" data-id="${o.id}">شوف البيانات</button>${o.offered?`<button class="btn danger" data-act="unoffer" data-id="${o.id}">حذف المادة من الترم</button>`:''}</div>
   </div>`;
 }
 
@@ -896,22 +896,22 @@ const ACT={
     const {p,ids}=selection();
     const planned=new Set(planGaps().all.map(g=>g.courseId));
     const cands=S.courses.filter(c=>!S.offerings.some(o=>o.courseId===c.id&&o.offered&&o.audiences.some(a=>ids.includes(a)))).sort((a,b)=>planned.has(b.id)-planned.has(a.id)||(b.semester===S.term.semester)-(a.semester===S.term.semester)||a.code.localeCompare(b.code));
-    if(!cands.length){ toast('كل المواد مطروحة بالفعل للمجموعات دي'); return; }
-    const v=await ask({title:'طرح مادة',wide:true,body:'<p class="meta">مواد الخطة الدراسية الأول. أي مادة من برة الخطة هتتطرح بتنبيه.</p>',fields:[{id:'c',label:'المادة',type:'select',full:true,options:cands.map(c=>[c.id,`${planned.has(c.id)?'':'(من برة الخطة) '}${c.code} · ${c.name} · ${dept(c.dept).name}`])},{id:'aud',label:'الجمهور',type:'checks',required:true,options:S.cohorts.filter(c=>c.programId===p.id&&(!p.levels||c.level===S.ui.sel.level)).map(c=>[c.id,`${cohortName(c,false)} (${c.students})`,ids.includes(c.id)])}],ok:'طرح'});
-    if(!v) return; const o=makeOffering(v.c,v.aud); S.ui.drawer=o.id; render(); toast(planned.has(v.c)?'اتطرحت. حدد المحاضرين وراجع المجموعات.':'اتطرحت، بس المادة دي مش في الخطة الدراسية للمجموعات دي.');
+    if(!cands.length){ toast('كل المواد متضافة بالفعل للترم للمجموعات دي'); return; }
+    const v=await ask({title:'إضافة مادة للترم',wide:true,body:'<p class="meta">مواد الخطة الدراسية الأول. أي مادة من برة الخطة هتتضاف بتنبيه.</p>',fields:[{id:'c',label:'المادة',type:'select',full:true,options:cands.map(c=>[c.id,`${planned.has(c.id)?'':'(من برة الخطة) '}${c.code} · ${c.name} · ${dept(c.dept).name}`])},{id:'aud',label:'الجمهور',type:'checks',required:true,options:S.cohorts.filter(c=>c.programId===p.id&&(!p.levels||c.level===S.ui.sel.level)).map(c=>[c.id,`${cohortName(c,false)} (${c.students})`,ids.includes(c.id)])}],ok:'إضافة للترم'});
+    if(!v) return; const o=makeOffering(v.c,v.aud); S.ui.drawer=o.id; render(); toast(planned.has(v.c)?'اتضافت للترم. حدد المحاضرين وراجع المجموعات.':'اتضافت للترم، بس المادة دي مش في الخطة الدراسية للمجموعات دي.');
   },
   async offerCourse(d){
     const opts=[]; for(const p of S.programs){ if(p.levels) for(let l=1;l<=p.levels;l++) opts.push([`${p.id}|${l}`,`${p.name} · ${levelName(p,l)}`]); else opts.push([`${p.id}|`,p.name]); }
-    const v=await ask({title:`طرح ${course(d.id).code} · ${course(d.id).name}`,fields:[{id:'pl',label:'البرنامج والفرقة',type:'select',options:opts}],ok:'التالي'});
+    const v=await ask({title:`إضافة ${course(d.id).code} · ${course(d.id).name}`,fields:[{id:'pl',label:'البرنامج والفرقة',type:'select',options:opts}],ok:'التالي'});
     if(!v) return; const [pid,l]=v.pl.split('|');
     const aud=await pickAudience('اختار الجمهور',pid,l?Number(l):null,S.cohorts.filter(c=>c.programId===pid&&(!l||c.level===Number(l))).map(c=>c.id));
-    if(!aud) return; const o=makeOffering(d.id,aud); S.ui.drawer=o.id; render(); toast('اتطرحت. حدد المحاضرين وراجع المجموعات.');
+    if(!aud) return; const o=makeOffering(d.id,aud); S.ui.drawer=o.id; render(); toast('اتضافت للترم. حدد المحاضرين وراجع المجموعات.');
   },
   reoffer(d){ findOff(d.id).offered=true; },
   async unoffer(d){
     const o=findOff(d.id); const co=course(o.courseId);
-    const v=await ask({title:`إلغاء طرح ${co.name}`,body:`<p class="meta">${o.sent?'الطرح اتبعت لنظام القاعات قبل كده، وهيتبعت له إلغاء. الأماكن هتفضل محجوزة لحد ما موظف التوزيع يأكد.':'الطرح ماتبعتش لنظام القاعات.'}</p>`,fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'إلغاء الطرح',danger:true});
-    if(!v) return; o.offered=false; if(o.sent){ o.sent=null; o.sentAt=null; o.cancelledSent=true; S.lastSendAt=stamp(); } render(); toast('اتلغى الطرح');
+    const v=await ask({title:`حذف ${co.name} من الترم`,body:`<p class="meta">${o.sent?'المادة اتبعتت لنظام القاعات قبل كده، وهيتبعت له إلغاء. الأماكن هتفضل محجوزة لحد ما موظف التوزيع يأكد.':'المادة ماتبعتتش لنظام القاعات.'}</p>`,fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'حذف المادة من الترم',danger:true});
+    if(!v) return; o.offered=false; if(o.sent){ o.sent=null; o.sentAt=null; o.cancelledSent=true; S.lastSendAt=stamp(); } render(); toast('اتحذفت المادة من الترم');
   },
   async toggleMand(d){
     const q=course(d.co).reqs[d.k][d.i];
@@ -937,7 +937,7 @@ const ACT={
     if(S.courses.some(c=>c.code.toLowerCase()===v.code.toLowerCase())){ toast(`الكود ${v.code} موجود بالفعل`); return; }
     const sessions={}, reqs={}; for(const k of v.kinds){ sessions[k]={hours:2,perWeek:1,count:Math.max(1,Number(k==='lecture'?v.lectures:v.others)||10),startWeek:k==='lecture'?1:3}; reqs[k]=[]; }
     S.courses.push({id:nid('c'),facultyId:S.faculty.id,code:v.code,name:v.name,dept:v.dept,semester:Number(v.semester),credits:Number(v.credits)||3,sessions,reqs});
-    render(); toast('اتضافت المادة. اطرحها من زرار "طرح لجمهور".');
+    render(); toast('اتضافت المادة. ضيفها للترم من زرار "إضافة للترم".');
   },
   async addDept(){ const v=await ask({title:'قسم جديد',fields:[{id:'name',label:'اسم القسم',required:true}],ok:'إضافة'}); if(!v) return; S.depts.push({id:nid('dp'),name:v.name,facultyId:S.faculty.id}); render(); },
   async addMajor(){ const v=await ask({title:'شعبة جديدة',fields:[{id:'name',label:'اسم الشعبة',required:true}],ok:'إضافة'}); if(!v) return; S.majors.push({id:nid('mj'),name:v.name}); render(); toast('اتضافت. فعّلها في البرامج اللي فيها الشعبة دي.'); },
@@ -959,7 +959,7 @@ async function programDialog(p){
   const before=S.cohorts; S.cohorts=buildCohorts(S,{},before);
   const lost=S.offerings.filter(o=>o.audiences.some(a=>!cohort(a)));
   for(const o of lost) o.audiences=o.audiences.filter(a=>cohort(a));
-  render(); toast(lost.length?`اتحفظ. ${lost.length} طرح اتشال منه جمهور مبقاش موجود، راجعه.`:'اتحفظ البرنامج ومجموعات الطلاب اتحدثت. سجّل أعداد الطلاب.');
+  render(); toast(lost.length?`اتحفظ. ${lost.length} مادة في الترم اتشال منها جمهور مبقاش موجود، راجعها.`:'اتحفظ البرنامج ومجموعات الطلاب اتحدثت. سجّل أعداد الطلاب.');
 }
 const CHG={
   cat(t){ S.ui.catFilter[t.dataset.k]=t.value; },
