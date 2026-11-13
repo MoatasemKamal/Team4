@@ -611,6 +611,7 @@ window.addEventListener('storage',e=>{
 /* ============ Dialog ============ */
 function fieldHtml(f){
   const id='f-'+f.id, v=esc(f.value??'');
+  if(f.type==='checks') return `<fieldset style="border:0;padding:0;margin:0"><legend class="meta" style="font-size:13.5px">${esc(f.label)}</legend><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;margin-top:4px">${f.options.map(([k,t,on])=>`<label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" name="${id}" value="${k}"${on?' checked':''}> ${esc(t)}</label>`).join('')}</div></fieldset>`;
   let ctl;
   if(f.type==='textarea') ctl=`<textarea id="${id}">${v}</textarea>`;
   else if(f.type==='select') ctl=`<select id="${id}">${f.options.map(([k,t])=>`<option value="${esc(k)}"${String(k)===String(f.value??'')?' selected':''}>${esc(t)}</option>`).join('')}</select>`;
@@ -630,6 +631,7 @@ function ask(o){
     form.onsubmit=e=>{
       e.preventDefault(); const vals={};
       for(const f of o.fields||[]){
+        if(f.type==='checks'){ vals[f.id]=[...form.querySelectorAll(`[name="f-${f.id}"]:checked`)].map(x=>x.value); continue; }
         const el=form.querySelector('#f-'+f.id); vals[f.id]=el.value.trim();
         if(f.required&&!vals[f.id]){ const er=form.querySelector('.dlg-err'); er.hidden=false; er.textContent=`اكتب ${f.label} عشان تكمل`; el.focus(); return; }
       }
@@ -846,7 +848,7 @@ function viewRooms(){
   const f=S.ui.roomFilters;
   const list=S.rooms.filter(r=>(!f.building||r.building===f.building)&&(!f.kind||r.kind===f.kind)&&(!f.state||roomState(r)===f.state)&&(!f.q||r.name.includes(f.q)));
   const occ=r=>S.classes.filter(c=>c.status==='active'&&c.roomId===r.id).length;
-  return `<div class="page-head"><div><h2>القاعات والمعامل</h2><p>${S.rooms.length} مكان في ${S.buildings.length} مباني. السعة مكتوبة من – إلى لكل نوع استخدام.</p></div></div>
+  return `<div class="page-head"><div><h2>القاعات والمعامل</h2><p>${S.rooms.length} مكان في ${S.buildings.length} مباني. السعة مكتوبة من – إلى لكل نوع استخدام.</p></div><button class="btn primary" data-act="newRoom">إضافة مكان جديد</button></div>
   <div class="filters">
     <input type="text" data-chg="rfilter" data-k="q" value="${esc(f.q)}" placeholder="بحث بالاسم" aria-label="بحث بالاسم">
     <select data-chg="rfilter" data-k="building" aria-label="المبنى"><option value="">كل المباني</option>${S.buildings.map(b=>`<option value="${b.id}"${f.building===b.id?' selected':''}>${esc(b.name)}</option>`).join('')}</select>
@@ -1177,6 +1179,42 @@ const ACT={
     log('ترتيب أولوية',`${room(x.roomId).name}: ${person(x.doctorId).name} ← ترتيب ${x.rank}`);
   },
   prefDel(d){ const x=find(S.preferred,d.id); S.preferred=S.preferred.filter(p=>p.id!==d.id); S.preferred.filter(p=>p.roomId===x.roomId).sort((a,b)=>a.rank-b.rank).forEach((p,i)=>p.rank=i+1); log('حذف قاعة مفضلة',`${person(x.doctorId).name} ← ${room(x.roomId).name}`); },
+  async newRoom(){
+    const v=await ask({title:'إضافة مكان جديد',fields:[
+      {id:'name',label:'الاسم',required:true,value:''},
+      {id:'kind',label:'النوع',type:'select',value:'hall',options:Object.entries(ROOMKIND)},
+      {id:'building',label:'المبنى',type:'select',value:S.buildings[0].id,options:[...S.buildings.map(b=>[b.id,b.name]),['__new','مبنى جديد…']]},
+      {id:'newBuilding',label:'اسم المبنى الجديد (لو اخترت مبنى جديد)',value:''},
+      {id:'floor',label:'الدور',required:true,value:'الأول'},
+      {id:'seats',label:'أقصى عدد طلاب',type:'number',required:true,value:'40'},
+      {id:'devices',label:'عدد الأجهزة (للمعامل)',type:'number',value:''},
+      {id:'dept',label:'مخصص لقسم (اختياري)',value:''},
+      {id:'eq',label:'الأدوات الموجودة',type:'checks',options:Object.entries(EQ).map(([k,t])=>[k,t,['projector','ac'].includes(k)])}
+    ],ok:'إضافة'});
+    if(!v) return;
+    const name=v.name.trim();
+    if(S.rooms.some(r=>r.name===name)){ toast(`فيه مكان اسمه ${name} بالفعل`); return; }
+    const seats=Math.max(1,Number(v.seats)||0);
+    let bId=v.building;
+    if(bId==='__new'){ const bn=v.newBuilding.trim(); if(!bn){ toast('اكتب اسم المبنى الجديد'); return; } bId=nid('b'); S.buildings.push({id:bId,name:bn}); log('إضافة مبنى',bn); }
+    const half=Math.max(1,Math.floor(seats/2));
+    const caps={
+      hall:{lecture:[Math.ceil(seats*.5),seats],section:[10,Math.min(seats,40)],exam:[5,half]},
+      amphi:{lecture:[Math.ceil(seats*.4),seats],exam:[10,half],conference:[20,seats]},
+      lab:{lab:[Math.min(8,seats),seats],exam:[Math.min(8,seats),seats]},
+      sectionRoom:{section:[Math.min(10,seats),seats],exam:[5,half]},
+      meeting:{conference:[5,seats],defense:[5,seats],workshop:[5,seats]}
+    }[v.kind];
+    const equipment={}; for(const e of v.eq) equipment[e]='ok';
+    const devN=Number(v.devices)||0;
+    if(v.kind==='lab'&&devN) equipment.computers='ok';
+    const r={id:nid('r'),name,kind:v.kind,building:bId,floor:v.floor.trim(),seats,equipment,caps,status:'available',maintenance:null,dept:v.dept.trim()||null,devices:v.kind==='lab'&&devN?{total:devN,working:devN}:null};
+    S.rooms.push(r);
+    log('إضافة مكان',`${r.name} · ${ROOMKIND[r.kind]} · ${building(bId).name} الدور ${r.floor} · ${seats} طالب`);
+    freedCheckRoomAll(r.id,`اتضاف مكان جديد: ${r.name}`);
+    S.ui.drawer={type:'room',id:r.id};
+    toast('اتضاف المكان. راجع السعات حسب الاستخدام، ولو فيه مواد مستنية مكان هيوصلك إشعار.');
+  },
   async addUsage(){
     const v=await ask({title:'نوع استخدام جديد',fields:[{id:'name',label:'الاسم',required:true}],ok:'إضافة'});
     if(!v) return; S.usage['u'+(++S.seq)]=v.name; log('إعدادات',`نوع استخدام جديد: ${v.name}`); render();
