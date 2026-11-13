@@ -170,8 +170,9 @@ const PTYPE={bachelor:'بكالوريوس (فرق)',credit:'ساعات معتم�
 const ORD=['الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة'];
 /* Same equipment keys as the rooms system; the rooms system owns this list and sends updates. */
 let EQ={projector:'بروجكتور',mic:'مايك وسماعات',ac:'تكييف',internet:'إنترنت',smartboard:'سبورة ذكية',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',excel:'Microsoft Excel',spss:'SPSS',accsoft:'برنامج محاسبي (ERP)'};
-const NAV=[['offer','المواد حسب البرنامج والفرقة'],['catalog','تفاصيل المواد'],['master','البيانات الأساسية'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
-const VERSION='النسخة: 14 نوفمبر 15:00';
+const NAV=[['offer','المواد حسب البرنامج والفرقة'],['catalog','تفاصيل المواد'],['plans','الخطط الدراسية'],['master','البيانات الأساسية'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
+const VERSION='النسخة: 14 نوفمبر 18:00';
+const PTYPE_ITEM={core:'إجبارية',elective:'اختيارية'};
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
 function seed(){
@@ -179,7 +180,7 @@ function seed(){
   const SEC=(count=10,startWeek=3)=>({hours:2,perWeek:1,count,startWeek});
   const R=(eq,mandatory=false,reason='')=>({eq,mandatory,reason});
   const st={
-    seq:300, version:4,
+    seq:300, version:5,
     university:'جامعة الإسكندرية',
     /* One faculty in use today; every department, program, course and staff member carries facultyId so more faculties can join later. */
     faculties:[{id:'fba',name:'كلية إدارة الأعمال',active:true}],
@@ -232,8 +233,17 @@ function seed(){
       {id:'mba605',code:'MBA605',name:'القيادة وإدارة التغيير',dept:'bus',credits:3,semester:1,sessions:{lecture:L(3)},reqs:{lecture:[R('projector')]}},
       {id:'dip501',code:'DIP501',name:'المحاسبة الإدارية',dept:'acc',credits:3,semester:1,sessions:{lecture:L(3)},reqs:{lecture:[R('projector')]}},
       {id:'ms701',code:'MS701',name:'مناهج البحث العلمي',dept:'sta',credits:3,semester:1,sessions:{lecture:L(3),lab:SEC(4,8)},reqs:{lecture:[R('projector')],lab:[R('computers',true,''),R('spss',true,'تحليل بيانات الرسائل')]}},
-      {id:'acc302',code:'ACC302',name:'المحاسبة الحكومية',dept:'acc',credits:3,semester:2,sessions:{lecture:L()},reqs:{lecture:[]}}
+      {id:'acc302',code:'ACC302',name:'المحاسبة الحكومية',dept:'acc',credits:3,semester:2,sessions:{lecture:L()},reqs:{lecture:[]}},
+      {id:'bus102',code:'BUS102',name:'مبادئ التسويق',dept:'bus',credits:3,semester:2,sessions:{lecture:L()},reqs:{lecture:[R('mic',true,'أعداد كبيرة في المدرج'),R('projector')]}},
+      {id:'acc102',code:'ACC102',name:'المحاسبة المالية 2',dept:'acc',credits:3,semester:2,sessions:{lecture:L(),section:SEC()},reqs:{lecture:[R('projector',true,'عرض القيود والقوائم المالية')],section:[]}},
+      {id:'eco102',code:'ECO102',name:'مبادئ الاقتصاد الكلي',dept:'eco',credits:3,semester:2,sessions:{lecture:L()},reqs:{lecture:[R('mic')]}},
+      {id:'sta102',code:'STA102',name:'الإحصاء للأعمال',dept:'sta',credits:3,semester:2,sessions:{lecture:L(),section:SEC()},reqs:{lecture:[R('mic')],section:[]}},
+      {id:'dip502',code:'DIP502',name:'التمويل الإداري',dept:'bus',credits:3,semester:1,sessions:{lecture:L(3)},reqs:{lecture:[R('projector')]}},
+      {id:'mba610',code:'MBA610',name:'التسويق الرقمي',dept:'bus',credits:3,semester:1,sessions:{lecture:L(3)},reqs:{lecture:[R('projector'),R('internet',true,'تطبيق على المنصات')]}},
+      {id:'mba615',code:'MBA615',name:'إدارة المشروعات',dept:'bus',credits:3,semester:1,sessions:{lecture:L(3)},reqs:{lecture:[R('projector')]}},
+      {id:'ms702',code:'MS702',name:'حلقة بحث',dept:'bus',credits:3,semester:2,sessions:{lecture:L(3)},reqs:{lecture:[R('projector')]}}
     ],
+    plans:[],
     offerings:[]
   };
   /* Student groups: program × level × major (majors from their start level); postgraduate programs are one group each. */
@@ -272,6 +282,30 @@ function seed(){
     O('dip501',['dip'],{L1:'d7'},{}),
     O('ms701',['ms'],{L1:'d9'},{lab:'m3'})
   ];
+  /* Study plans (اللائحة): which courses each program's students take, by level and semester. */
+  let pi=0; const I=(courseId,level,sem,type='core',major=null,prereq=[])=>({id:'pi'+(++pi),courseId,level,sem,type,major,prereq});
+  const core=(level,sem,ids,major=null)=>ids.map(c=>I(c,level,sem,'core',major));
+  st.plans=[
+    {programId:'ar',bylaw:'لائحة 2018',picks:{},items:[
+      ...core(1,1,['bus101','acc101','eco101','sta101']),
+      I('bus102',1,2),I('acc102',1,2,'core',null,['acc101']),I('eco102',1,2),I('sta102',1,2,'core',null,['sta101']),
+      I('acc201',2,1,'core',null,['acc102']),I('eco201',2,1,'core',null,['eco102']),I('bus201',2,1),I('sta201',2,1,'core',null,['sta102']),
+      I('fin210',2,2),
+      I('bus301',3,1),I('acc301',3,1,'core','acc',['acc201']),I('bus305',3,1,'core','bus'),I('eco301',3,1,'core','eco',['eco201']),I('mis301',3,1,'core','mis'),
+      I('acc302',3,2,'core','acc'),
+      I('bus401',4,1,'core','acc'),I('bus401',4,1,'core','bus'),I('acc401',4,1,'core','acc',['acc301']),I('mis401',4,1,'core','mis',['mis301'])
+    ]},
+    {programId:'en',bylaw:'لائحة 2018',picks:{},items:[...core(1,1,['acc101e','bus101e'])]},
+    {programId:'ch',bylaw:'لائحة الساعات المعتمدة 2021',picks:{'2|1|':1},items:[
+      ...core(1,1,['bus101','acc101','eco101']),
+      I('fin210',2,1),I('bus201',2,1,'elective'),I('eco201',2,1,'elective')
+    ]},
+    {programId:'in',bylaw:'لائحة 2018',picks:{},items:[...core(1,1,['bus101','acc101','eco101'])]},
+    {programId:'dip',bylaw:'لائحة الدراسات العليا 2019',picks:{},items:[I('dip501',null,1),I('dip502',null,1)]},
+    {programId:'ms',bylaw:'لائحة الدراسات العليا 2019',picks:{'0|1|':1},items:[I('ms701',null,1),I('mba601',null,1,'elective'),I('mba605',null,1,'elective'),I('ms702',null,2,'core',null,['ms701'])]},
+    {programId:'mba',bylaw:'لائحة MBA 2020',picks:{'0|1|':1},items:[I('mba601',null,1),I('mba605',null,1),I('mba610',null,1,'elective'),I('mba615',null,1,'elective')]}
+  ];
+  st.seq=Math.max(st.seq,pi+1);
   return st;
 }
 function buildCohorts(st,sizes={},prev=[]){
@@ -303,6 +337,22 @@ function cohortName(c,withProgram=true){
 }
 const audNames=o=>o.audiences.map(id=>cohortName(cohort(id))).join('، ');
 const progOf=o=>program(cohort(o.audiences[0]).programId);
+/* ---- Study plans ---- */
+const semOf=o=>o.semester??course(o.courseId).semester;
+function planOf(pid){ let pl=S.plans.find(x=>x.programId===pid); if(!pl){ pl={programId:pid,bylaw:'',picks:{},items:[]}; S.plans.push(pl); } return pl; }
+const pkey=(l,s,m)=>`${l||0}|${s}|${m||''}`;
+/* Plan items for a program + level + semester; majors = the majors in view (null when the level has no majors). */
+function planItems(pid,level,sem,majors){
+  return planOf(pid).items.filter(i=>(i.level||null)===(level||null)&&i.sem===sem&&(!i.major||!majors||majors.includes(i.major)));
+}
+/* Student groups a plan item applies to: all groups of the level, or just its major. */
+const itemCohorts=(pid,i)=>S.cohorts.filter(c=>c.programId===pid&&(c.level||null)===(i.level||null)&&(!i.major||c.majorId===i.major));
+function inPlan(o){ const c=cohort(o.audiences[0]); return !!c&&planOf(c.programId).items.some(i=>i.courseId===o.courseId&&(i.level||null)===(c.level||null)); }
+const isElective=o=>{ const c=cohort(o.audiences[0]); return !!c&&planOf(c.programId).items.some(i=>i.courseId===o.courseId&&(i.level||null)===(c.level||null)&&i.type==='elective'); };
+const levelLabel=(p,l)=>l?levelName(p,l):'البرنامج';
+const semName=s=>['','الفصل الأول','الفصل الثاني','الفصل الصيفي'][s]||'';
+/* Prerequisite is fine when it sits earlier in the same plan (lower level, or same level and earlier semester). */
+function prereqOk(pl,i,pre){ return pl.items.some(x=>x.courseId===pre&&((x.level||0)<(i.level||0)||((x.level||0)===(i.level||0)&&x.sem<i.sem))); }
 /* Group label: L1 → م1، L1-S2 → م1 · سكشن 2. With one lecture group the م1 prefix is dropped. */
 function groupLabel(g,lg){
   if(g==='all') return 'كل الطلاب';
@@ -377,7 +427,10 @@ function issuesOf(o){
   if(noStaff.length) bad.push(`${noStaff.length} حصة ملهاش محاضر`);
   for(const k of Object.keys(co.sessions)) for(const q of co.reqs[k]||[]) if(q.mandatory&&!q.reason) bad.push(`${EQ[q.eq]} إلزامي في ال${KINDS[k]} من غير سبب`);
   const sum=o.audiences.reduce((a,id)=>a+(cohort(id)?.students||0),0);
-  if(sum&&o.students!==sum) warn.push(`عدد الطلاب (${o.students}) مختلف عن مجموع الجمهور (${sum})`);
+  const elec=isElective(o);
+  if(sum&&o.students!==sum&&!elec) warn.push(`عدد الطلاب (${o.students}) مختلف عن مجموع الجمهور (${sum})`);
+  if(elec) warn.push(`مادة اختيارية: عدد الطلاب (${o.students}) متوقع لحد ما التسجيل الفعلي يوصل`);
+  if(!inPlan(o)) warn.push('المادة مش في الخطة الدراسية للبرنامج والفرقة دي');
   for(const k of Object.keys(co.sessions)) if(modeOf(o,k)==='hybrid') warn.push(`ال${KINDS[k]} حضوري - أونلاين: نظام القاعات هيضيف كاميرا ومايك ونت كمتطلبات إلزامية`);
   for(const p of new Set(ss.map(s=>s.instructor).filter(Boolean))) if(overloaded(p)) warn.push(`${person(p).name} فوق الحد الأقصى للعبء`);
   return {bad,warn};
@@ -502,16 +555,38 @@ function selection(){
   const list=S.cohorts.filter(c=>c.programId===p.id&&(!p.levels||c.level===u.level)&&(!u.major||c.majorId===u.major));
   return {p,list,ids:list.map(c=>c.id)};
 }
+function progTabsHtml(active,act){
+  return S.programs.map((x,i)=>{ const head=i===0||(S.programs[i-1].type==='pg')!==(x.type==='pg')?`<span class="tab-group">${x.type==='pg'?'الدراسات العليا':'البكالوريوس'}</span>`:''; return head+`<button class="tab${x.id===active?' on':''}" data-act="${act}" data-id="${x.id}" aria-pressed="${x.id===active}">${esc(x.name)}</button>`; }).join('');
+}
+/* Plan courses for the selection that aren't offered yet: the system proposes, the coordinator offers. */
+function planGaps(){
+  const u=S.ui.sel, {p,list,ids}=selection();
+  const majors=list.some(c=>c.majorId)?list.map(c=>c.majorId):null;
+  const items=planItems(p.id,u.level,S.term.semester,majors);
+  const by=new Map();
+  for(const i of items){ const t=itemCohorts(p.id,i).filter(c=>ids.includes(c.id)).map(c=>c.id); if(!t.length) continue;
+    const g=by.get(i.courseId)||{courseId:i.courseId,type:i.type,majors:new Set(),aud:new Set(),prereq:i.prereq}; i.major?g.majors.add(i.major):g.majors.add('*'); t.forEach(x=>g.aud.add(x)); by.set(i.courseId,g); }
+  const out=[...by.values()].map(g=>({...g,aud:[...g.aud]}));
+  return {all:out,missing:out.filter(g=>!S.offerings.some(o=>o.courseId===g.courseId&&o.audiences.some(a=>g.aud.includes(a))))};
+}
 function viewOffer(){
   const u=S.ui.sel, {p,list,ids}=selection();
-  const offs=S.offerings.filter(o=>o.audiences.some(a=>ids.includes(a))&&course(o.courseId).semester===S.term.semester);
+  const offs=S.offerings.filter(o=>o.audiences.some(a=>ids.includes(a))&&semOf(o)===S.term.semester);
   const act=offs.filter(o=>o.offered);
   const students=list.reduce((a,c)=>a+c.students,0);
   const credits=act.reduce((a,o)=>a+course(o.courseId).credits,0);
   const sess=act.reduce((a,o)=>a+sessionsOf(o).filter(s=>s.mode!=='online').length,0);
   const blocked=act.filter(o=>issuesOf(o).bad.length).length, notSent=act.filter(o=>sendState(o)[1]!=='ok').length;
-  const groups=[['bachelor','البكالوريوس'],['credit',''],['external',''],['pg','الدراسات العليا']];
-  const progTabs=S.programs.map((x,i)=>{ const head=(i===0||S.programs[i-1].type==='pg')!==(x.type==='pg')||i===0?`<span class="tab-group">${x.type==='pg'?'الدراسات العليا':'البكالوريوس'}</span>`:''; return head+`<button class="tab${x.id===p.id?' on':''}" data-act="selProgram" data-id="${x.id}" aria-pressed="${x.id===p.id}">${esc(x.name)}</button>`; }).join('');
+  const gaps=planGaps(), pl=planOf(p.id), pk=pkey(u.level,S.term.semester,'');
+  const nElec=gaps.all.filter(g=>g.type==='elective').length, pick=pl.picks[pk];
+  const gapRow=g=>{ const co=course(g.courseId); const scope=g.majors.has('*')?'كل الطلاب':[...g.majors].map(m=>esc(major(m).name)).join('، ');
+    return `<tr><td><b>${esc(co.code)}</b> · ${esc(co.name)}</td><td>${pill(PTYPE_ITEM[g.type],g.type==='core'?'acc':'off')}</td><td class="meta">${scope}</td><td class="num">${co.credits}</td><td class="num">${g.aud.reduce((a,id)=>a+cohort(id).students,0)}</td><td>${g.prereq.length?g.prereq.map(x=>`<span class="tag">${esc(course(x).code)}</span>`).join(''):'<span class="meta">—</span>'}</td><td><button class="btn sm primary" data-act="planOffer" data-c="${g.courseId}">طرح</button></td></tr>`; };
+  const planPanel=gaps.all.length?(gaps.missing.length?`<section class="panel plan-gaps" aria-labelledby="h-gap" style="margin-bottom:16px"><div class="inline" style="justify-content:space-between"><h3 id="h-gap" style="margin:0">مقترح من الخطة الدراسية · ${gaps.missing.length} مادة لسه ماتطرحتش</h3>${gaps.missing.some(g=>g.type==='core')?`<button class="btn sm primary" data-act="planOfferCore">طرح كل الإجباري (${gaps.missing.filter(g=>g.type==='core').length})</button>`:''}</div>
+    <p class="hint" style="margin:4px 0 10px">${esc(pl.bylaw||'الخطة الدراسية')} · ${esc(levelLabel(p,u.level))} · ${semName(S.term.semester)}.${nElec?` الاختياري: الطالب بياخد ${pick||'؟'} من ${nElec}، فاطرح اللي هيتفتح بس.`:''} النظام بيقترح، وانت اللي بتطرح.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>النوع</th><th>لمين</th><th>س.م</th><th>الطلاب</th><th>متطلب سابق</th><th></th></tr></thead><tbody>${gaps.missing.map(gapRow).join('')}</tbody></table></div></section>`
+    :`<div class="okbox" style="margin-bottom:16px">كل مواد الخطة الدراسية (${gaps.all.length}) للمجموعات دي في ${semName(S.term.semester)} اتطرحت.</div>`)
+    :`<div class="infobox" style="margin-bottom:16px">مفيش مواد في الخطة الدراسية للمجموعات دي في ${semName(S.term.semester)}. <a href="#plans">عرّف الخطة</a></div>`;
+  const progTabs=progTabsHtml(p.id,'selProgram');
   const levelTabs=p.levels?Array.from({length:p.levels},(_,i)=>i+1).map(l=>`<button class="btn sm ${l===u.level?'primary':''}" data-act="selLevel" data-v="${l}" aria-pressed="${l===u.level}">${levelName(p,l)}</button>`).join(''):'';
   const majorChips=p.levels&&p.majorsFrom&&u.level>=p.majorsFrom?`<span class="meta" style="margin-inline-start:8px">الشعبة:</span><button class="btn sm ${!u.major?'primary':''}" data-act="selMajor" data-v="">كل الشعب</button>${p.majors.map(m=>`<button class="btn sm ${u.major===m?'primary':''}" data-act="selMajor" data-v="${m}">${esc(major(m).name)}</button>`).join('')}`:'';
   return `<div class="page-head"><div><h2>المواد حسب البرنامج والفرقة</h2><p>${esc(S.faculty.name)} · المواد المطروحة لكل مجموعة طلاب في ${esc(S.term.name)}، ومجموعاتها ومحاضريها، وحالة إرسالها لنظام القاعات.</p></div>
@@ -526,10 +601,11 @@ function viewOffer(){
     <div class="tile"><b>${sess}</b><span>حصة محتاجة مكان</span></div>
     <div class="tile ${blocked?'bad':'ok'}"><b>${blocked}</b><span>مادة ناقصها بيانات</span></div>
   </div>
+  ${planPanel}
   <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>القسم</th><th>س.م</th><th>الجمهور</th><th>الطلاب</th><th>المجموعات وخطة التدريس</th><th>الإرسال</th><th>التوزيع</th><th>تنبيهات</th></tr></thead><tbody>
   ${offs.map(o=>{ const co=course(o.courseId), is=issuesOf(o), [st,k]=sendState(o);
-    return `<tr class="click" data-act="openOff" data-id="${o.id}" tabindex="0"${o.offered?'':' style="opacity:.6"'}><td><b>${esc(co.code)}</b> · ${esc(co.name)}</td><td>${esc(dept(co.dept).name)}</td><td class="num">${co.credits}</td>
-    <td>${o.audiences.length>1?pill('مشتركة','acc')+' ':''}<span class="meta">${o.audiences.map(id=>esc(cohortName(cohort(id),false))).join('، ')}</span></td><td class="num">${o.students}</td><td><div class="sess">${groupsSummary(o)}</div></td>
+    return `<tr class="click" data-act="openOff" data-id="${o.id}" tabindex="0"${o.offered?'':' style="opacity:.6"'}><td><b>${esc(co.code)}</b> · ${esc(co.name)}${isElective(o)?' '+pill('اختيارية','off'):''}${inPlan(o)?'':' '+pill('من برة الخطة','warn')}</td><td>${esc(dept(co.dept).name)}</td><td class="num">${co.credits}</td>
+    <td>${o.audiences.length>1?pill('مشتركة','acc')+' ':''}<span class="meta">${o.audiences.map(id=>esc(cohortName(cohort(id),false))).join('، ')}</span></td><td class="num">${o.students}${isElective(o)?'<div class="meta">متوقع</div>':''}</td><td><div class="sess">${groupsSummary(o)}</div></td>
     <td>${pill(st,k)}${o.sentAt&&o.offered?`<div class="meta">${esc(o.sentAt)}</div>`:''}</td><td>${allocCell(o)}</td><td>${is.bad.map(x=>`<span class="tag bad">${esc(x)}</span>`).join('')}${is.warn.map(x=>`<span class="tag warn">${esc(x)}</span>`).join('')}</td></tr>`; }).join('')||'<tr><td colspan="9" class="meta">مفيش مواد مطروحة لمجموعات الطلاب دي في الترم ده. استخدم "طرح مادة لهنا".</td></tr>'}
   </tbody></table></div>`;
 }
@@ -541,14 +617,79 @@ function viewCatalog(){
     <input type="text" data-chg="cat" data-k="q" value="${esc(f.q)}" placeholder="بحث بالاسم أو الكود" aria-label="بحث">
     <select data-chg="cat" data-k="dept" aria-label="القسم"><option value="">كل الأقسام</option>${S.depts.map(d=>`<option value="${d.id}"${f.dept===d.id?' selected':''}>${esc(d.name)}</option>`).join('')}</select>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>الكود</th><th>المادة</th><th>القسم</th><th>الفصل</th><th>س.م</th><th>خطة التدريس</th><th>مطروحة لـ</th><th></th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>الكود</th><th>المادة</th><th>القسم</th><th>الفصل</th><th>س.م</th><th>خطة التدريس</th><th>في الخطط الدراسية</th><th>مطروحة لـ</th><th></th></tr></thead><tbody>
   ${list.map(c=>{ const offs=S.offerings.filter(o=>o.courseId===c.id);
+    const inPl=[]; for(const pl of S.plans){ const pr=program(pl.programId); if(!pr) continue; const seen=new Set(); for(const i of pl.items) if(i.courseId===c.id&&!seen.has(`${i.level}|${i.sem}`)){ seen.add(`${i.level}|${i.sem}`); inPl.push(`<span class="tag" title="${esc(pr.name)} · ${esc(levelLabel(pr,i.level))} · ${semName(i.sem)}">${esc(pr.code)}${i.level?' '+i.level:''} · ف${i.sem}${i.type==='elective'?' · اختياري':''}</span>`); } }
     return `<tr><td class="num"><b>${esc(c.code)}</b></td><td>${esc(c.name)}</td><td>${esc(dept(c.dept).name)}</td><td>${c.semester===1?'الأول':'الثاني'}</td><td class="num">${c.credits}</td>
     <td>${Object.entries(c.sessions).map(([k,s])=>{ const w=weeksOf(s); return `<span class="tag">${s.count} ${s.count>1?KINDS_PL[k]:KINDS[k]} · ${s.hours} س · أ${w.from}–${w.to}</span>`; }).join('')}</td>
+    <td>${inPl.join('')||'<span class="meta">مش في أي خطة</span>'}</td>
     <td>${offs.map(o=>`<button class="tag" style="cursor:pointer${o.offered?'':';opacity:.6'}" data-act="openOff" data-id="${o.id}">${esc(audNames(o))}</button>`).join('')||'<span class="meta">مش مطروحة</span>'}</td>
     <td>${c.semester===S.term.semester?`<button class="btn sm" data-act="offerCourse" data-id="${c.id}">طرح لجمهور</button>`:''}</td></tr>`; }).join('')}
   </tbody></table></div>`;
 }
+/* ============ Study plans (الخطط الدراسية) ============ */
+function viewPlans(){
+  const pid=S.ui.planProg, p=program(pid), pl=planOf(pid);
+  const levels=p.levels?Array.from({length:p.levels},(_,i)=>i+1):[null];
+  const sems=[1,2];
+  const all=pl.items.filter(i=>course(i.courseId));
+  const coreH=all.filter(i=>i.type==='core').reduce((a,i)=>a+course(i.courseId).credits,0);
+  const semBox=(l,s)=>{
+    const items=all.filter(i=>(i.level||null)===l&&i.sem===s).sort((a,b)=>(a.major||'').localeCompare(b.major||'')||(a.type>b.type?1:-1));
+    const core=items.filter(i=>i.type==='core'), elec=items.filter(i=>i.type==='elective'), k=pkey(l,s,'');
+    const row=i=>{ const co=course(i.courseId); const bad=i.prereq.filter(x=>!prereqOk(pl,i,x));
+      return `<tr><td><b>${esc(co.code)}</b> · ${esc(co.name)}</td><td class="num">${co.credits}</td><td>${pill(PTYPE_ITEM[i.type],i.type==='core'?'acc':'off')}</td>${p.majorsFrom&&l>=p.majorsFrom?`<td>${i.major?esc(major(i.major)?.name||'—'):'<span class="meta">مشتركة</span>'}</td>`:''}
+      <td>${i.prereq.map(x=>`<span class="tag${bad.includes(x)?' warn" title="المتطلب ده مش قبلها في الخطة':''}">${esc(course(x)?.code||x)}</span>`).join('')||'<span class="meta">—</span>'}</td>
+      <td style="width:1%;white-space:nowrap"><div class="inline" style="flex-wrap:nowrap"><button class="btn sm ghost" data-act="planEdit" data-id="${i.id}" aria-label="تعديل ${esc(co.code)}">تعديل</button><button class="btn sm ghost danger" data-act="planDel" data-id="${i.id}" aria-label="شيل ${esc(co.code)} من الخطة">شيل</button></div></td></tr>`; };
+    const hasMaj=p.majorsFrom&&l>=p.majorsFrom;
+    return `<div class="card"><div class="inline" style="justify-content:space-between"><b>${semName(s)}</b><span class="meta">إجباري ${core.reduce((a,i)=>a+course(i.courseId).credits,0)} س.م${elec.length?` · اختياري: ${elec.length} مواد`:''}</span></div>
+      ${items.length?`<div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>المادة</th><th>س.م</th><th>النوع</th>${hasMaj?'<th>الشعبة</th>':''}<th>متطلب سابق</th><th></th></tr></thead><tbody>${items.map(row).join('')}</tbody></table></div>`:'<div class="meta" style="margin:8px 0">مفيش مواد لسه.</div>'}
+      <div class="inline" style="margin-top:8px"><button class="btn sm" data-act="planAdd" data-l="${l||''}" data-s="${s}">إضافة مادة</button>${elec.length?`<label class="meta">الطالب بياخد <input type="number" min="1" max="${elec.length}" style="width:56px" data-chg="planPick" data-k="${k}" value="${pl.picks[k]||''}" aria-label="عدد المواد الاختيارية"> من ${elec.length} اختياري</label>`:''}</div></div>`;
+  };
+  return `<div class="page-head"><div><h2>الخطط الدراسية</h2><p>المواد اللي طلاب كل برنامج بيدرسوها في كل ${p.levels?(p.type==='credit'?'مستوى':'فرقة'):'سنة'} وكل فصل دراسي، حسب اللائحة. شاشة الطرح بتقترح منها كل ترم.</p></div></div>
+  <div class="tabs" role="group" aria-label="البرامج">${progTabsHtml(pid,'planProg')}</div>
+  <div class="inline" style="margin-bottom:14px;justify-content:space-between"><div><b>${esc(pl.bylaw||'من غير اسم لائحة')}</b> <button class="btn sm ghost" data-act="planBylaw">تعديل اسم اللائحة</button></div><span class="meta">${all.length} مادة في الخطة · ${coreH} س.م إجباري</span></div>
+  ${levels.map(l=>`<section class="panel" style="margin-bottom:14px" aria-label="${esc(levelLabel(p,l))}"><h3>${esc(l?levelLabel(p,l):p.name)}${p.majorsFrom&&l>=p.majorsFrom?` <span class="meta">· فيها شعب: ${p.majors.map(m=>esc(major(m).name)).join('، ')}</span>`:''}</h3><div style="display:grid;gap:12px">${sems.map(s=>semBox(l,s)).join('')}</div></section>`).join('')}`;
+}
+async function planItemDialog(pl,i,l,s){
+  const p=program(pl.programId), hasMaj=p.majorsFrom&&l&&l>=p.majorsFrom;
+  const taken=new Set(pl.items.filter(x=>x!==i&&(x.level||null)===l&&x.sem===s&&!hasMaj).map(x=>x.courseId));
+  const opts=S.courses.filter(c=>!taken.has(c.id)).sort((a,b)=>(b.semester===s)-(a.semester===s)||a.code.localeCompare(b.code)).map(c=>[c.id,`${c.code} · ${c.name} · ${c.credits} س.م`]);
+  const v=await ask({title:i?`تعديل ${course(i.courseId).code} في الخطة`:`إضافة مادة · ${levelLabel(p,l)} · ${semName(s)}`,wide:true,fields:[
+    {id:'c',label:'المادة',type:'select',full:true,options:opts,value:i?.courseId||''},
+    {id:'type',label:'النوع',type:'select',options:Object.entries(PTYPE_ITEM),value:i?.type||'core'},
+    ...(hasMaj?[{id:'major',label:'الشعبة',type:'select',options:[['','مشتركة لكل الشعب'],...p.majors.map(m=>[m,major(m).name])],value:i?.major||''}]:[]),
+    {id:'pre',label:'المتطلب السابق',type:'select',options:[['','مفيش'],...S.courses.map(c=>[c.id,`${c.code} · ${c.name}`])],value:i?.prereq[0]||''}],ok:i?'حفظ':'إضافة'});
+  if(!v) return;
+  const data={courseId:v.c,type:v.type,major:hasMaj?(v.major||null):null,prereq:v.pre&&v.pre!==v.c?[v.pre]:[]};
+  if(pl.items.some(x=>x!==i&&x.courseId===data.courseId&&(x.level||null)===l&&x.sem===s&&(x.major||null)===data.major)){ toast('المادة دي موجودة بالفعل في نفس المكان من الخطة'); return; }
+  if(i) Object.assign(i,data); else pl.items.push({id:nid('pi'),level:l,sem:s,...data});
+  toast(i?'اتعدلت':'اتضافت للخطة. هتظهر كاقتراح في شاشة الطرح.');
+}
+const PACT={
+  planProg(d){ S.ui.planProg=d.id; },
+  async planBylaw(){ const pl=planOf(S.ui.planProg); const n=await nameDialog('اسم اللائحة',pl.bylaw); if(n) pl.bylaw=n; },
+  async planAdd(d){ await planItemDialog(planOf(S.ui.planProg),null,d.l?Number(d.l):null,Number(d.s)); },
+  async planEdit(d){ const pl=planOf(S.ui.planProg), i=pl.items.find(x=>x.id===d.id); await planItemDialog(pl,i,i.level||null,i.sem); },
+  planDel(d){ const pl=planOf(S.ui.planProg); const i=pl.items.find(x=>x.id===d.id); pl.items=pl.items.filter(x=>x!==i);
+    const n=S.offerings.filter(o=>o.offered&&o.courseId===i.courseId&&o.audiences.some(a=>itemCohorts(pl.programId,i).some(c=>c.id===a))).length;
+    toast(n?`اتشالت من الخطة. الطرح الحالي مكمل، وهيظهر عليه "من برة الخطة".`:'اتشالت من الخطة'); },
+  async planOffer(d){ const g=planGaps().missing.find(x=>x.courseId===d.c); if(!g) return; await offerFromPlan(g,true); },
+  async planOfferCore(){ const list=planGaps().missing.filter(g=>g.type==='core'); for(const g of list) await offerFromPlan(g,false); toast(`اتطرحت ${list.length} مادة. حدد المحاضرين لكل واحدة.`); }
+};
+async function offerFromPlan(g,open){
+  let students=null;
+  if(g.type==='elective'){
+    const {p}=selection(), pl=planOf(p.id), sum=g.aud.reduce((a,id)=>a+cohort(id).students,0);
+    const n=planGaps().all.filter(x=>x.type==='elective').length, pick=pl.picks[pkey(S.ui.sel.level,S.term.semester,'')]||1;
+    const guess=Math.ceil(sum*pick/Math.max(1,n));
+    const v=await ask({title:`طرح ${course(g.courseId).code} · مادة اختيارية`,body:`<p class="meta">الطلاب هيختاروا ${pick} من ${n} مواد اختيارية، فمش كل الـ ${sum} طالب هياخدوها. اكتب العدد المتوقع لحد ما التسجيل الفعلي يوصل.</p>`,fields:[{id:'n',label:'عدد الطلاب المتوقع',type:'number',value:String(guess),min:1,required:true}],ok:'طرح'});
+    if(!v) return; students=Math.max(1,Number(v.n)||guess);
+  }
+  const o=makeOffering(g.courseId,g.aud); if(students) o.students=students;
+  if(open){ S.ui.drawer=o.id; render(); toast('اتطرحت من الخطة. حدد المحاضرين وراجع المجموعات.'); }
+}
+
 /* ============ Master data (البيانات الأساسية) ============ */
 const MTABS=[['faculty','الجامعة والكليات'],['depts','الأقسام العلمية'],['programs','البرامج ومجموعات الطلاب'],['majors','الشعب'],['terms','الفصول الدراسية'],['equipment','الأدوات'],['fixed','أنواع الحصص وطرق التدريس']];
 const rankOf=p=>p&&p.rank?find(S.ranks,p.rank):null;
@@ -613,7 +754,7 @@ function viewLoad(){
 }
 function viewOutbox(){
   const f=S.ui.outFilter;
-  const list=S.offerings.filter(o=>o.offered&&course(o.courseId).semester===S.term.semester).filter(o=>f==='all'||sendState(o)[1]===f);
+  const list=S.offerings.filter(o=>o.offered&&semOf(o)===S.term.semester).filter(o=>f==='all'||sendState(o)[1]===f);
   const pv=S.ui.preview?S.offerings.find(o=>o.id===S.ui.preview):null;
   return `<div class="page-head"><div><h2>الإرسال لنظام القاعات</h2><p>كل طرح بيتبعت كقائمة حصص: مجموعات المحاضرة والسكاشن والمعامل، وأسابيعها، ومتطلباتها. أي تغيير بعد الإرسال لازم يتبعت كتحديث.</p></div>
   <div class="inline"><button class="btn sm ${f==='all'?'primary':''}" data-act="outFilter" data-v="all">الكل</button><button class="btn sm ${f==='acc'?'primary':''}" data-act="outFilter" data-v="acc">ماتبعتتش</button><button class="btn sm ${f==='warn'?'primary':''}" data-act="outFilter" data-v="warn">اتغيرت</button><button class="btn sm ${f==='ok'?'primary':''}" data-act="outFilter" data-v="ok">اتبعتت</button></div></div>
@@ -687,7 +828,7 @@ function drawerOffering(o){
 /* ============ Render ============ */
 function render(){
   renderRail();
-  const v={offer:viewOffer,catalog:viewCatalog,master:viewMaster,load:viewLoad,outbox:viewOutbox,settings:viewSettings}[S.ui.view]||viewOffer;
+  const v={offer:viewOffer,catalog:viewCatalog,plans:viewPlans,master:viewMaster,load:viewLoad,outbox:viewOutbox,settings:viewSettings}[S.ui.view]||viewOffer;
   $('#main').innerHTML=v();
   const root=$('#drawer-root'); const prev=$('#drawer-body')?.scrollTop||0;
   const o=S.ui.drawer&&S.offerings.find(x=>x.id===S.ui.drawer);
@@ -698,10 +839,10 @@ function render(){
   persist();
 }
 function syncHash(){ const h=location.hash.slice(1); S.ui.view=NAV.some(([k])=>k===h)?h:'offer'; S.ui.drawer=null; render(); window.scrollTo(0,0); }
-const freshUI=()=>({view:'offer',sel:{program:'ar',level:1,major:''},drawer:null,catFilter:{dept:'',q:''},outFilter:'all',preview:null});
+const freshUI=()=>({view:'offer',planProg:'ar',sel:{program:'ar',level:1,major:''},drawer:null,catFilter:{dept:'',q:''},outFilter:'all',preview:null});
 function boot(fresh){
   const saved=fresh?null:store.get(SAVE_KEY);
-  if(saved&&saved.version===4){ S={...saved,ui:freshUI()}; return; }
+  if(saved&&saved.version===5){ S={...saved,ui:freshUI()}; return; }
   S=seed(); S.ui=freshUI();
   for(const o of S.offerings) if(o._send){ send(o); o.sentAt='10 نوفمبر'; delete o._send; }
   S.lastSendAt='10 نوفمبر';
@@ -720,11 +861,12 @@ async function pickAudience(title,programId,level,pre=[]){
 function makeOffering(courseId,aud){
   const p=program(cohort(aud[0]).programId);
   let id=`of_${courseId}_${p.id}`; if(S.offerings.some(o=>o.id===id)) id=nid(`of_${courseId}_${p.id}_`);
-  const o={id,courseId,audiences:aud,students:aud.reduce((a,c)=>a+(cohort(c)?.students||0),0),offered:true,modes:{},lgCount:null,subCount:{},staff:{},ta:{},groupStaff:{},sent:null,sentAt:null,cancelledSent:false};
+  const o={id,courseId,audiences:aud,semester:S.term.semester,students:aud.reduce((a,c)=>a+(cohort(c)?.students||0),0),offered:true,modes:{},lgCount:null,subCount:{},staff:{},ta:{},groupStaff:{},sent:null,sentAt:null,cancelledSent:false};
   S.offerings.push(o); return o;
 }
 const ACT={
   ...MACT,
+  ...PACT,
   reset(){ const v=S.ui.view; store.del(SAVE_KEY); boot(true); S.ui.view=v; toast('رجعت البيانات التجريبية'); },
   selProgram(d){ const p=program(d.id); S.ui.sel={program:p.id,level:p.levels?1:null,major:''}; },
   selLevel(d){ S.ui.sel.level=Number(d.v); S.ui.sel.major=''; },
@@ -738,7 +880,7 @@ const ACT={
   sendOne(d){ const o=findOff(d.id); const was=sendState(o)[1]; if(send(o)) toast(was==='warn'?'اتبعت التحديث لنظام القاعات':'اتبعتت لنظام القاعات'); else toast('كمّل البيانات الناقصة الأول'); },
   sendSel(){
     const {ids}=selection();
-    const list=S.offerings.filter(o=>o.offered&&o.audiences.some(a=>ids.includes(a))&&course(o.courseId).semester===S.term.semester&&sendState(o)[1]!=='ok');
+    const list=S.offerings.filter(o=>o.offered&&o.audiences.some(a=>ids.includes(a))&&semOf(o)===S.term.semester&&sendState(o)[1]!=='ok');
     let ok=0, skip=0; for(const o of list){ if(send(o)) ok++; else skip++; }
     toast(`اتبعت ${ok}${skip?` · ${skip} ناقصها بيانات ومتبعتتش`:''}`);
   },
@@ -752,10 +894,11 @@ const ACT={
   },
   async offerHere(){
     const {p,ids}=selection();
-    const cands=S.courses.filter(c=>c.semester===S.term.semester&&!S.offerings.some(o=>o.courseId===c.id&&o.offered&&o.audiences.some(a=>ids.includes(a))));
-    if(!cands.length){ toast('كل مواد الفصل ده مطروحة بالفعل للمجموعات دي'); return; }
-    const v=await ask({title:'طرح مادة',wide:true,fields:[{id:'c',label:'المادة',type:'select',full:true,options:cands.map(c=>[c.id,`${c.code} · ${c.name} · ${dept(c.dept).name}`])},{id:'aud',label:'الجمهور',type:'checks',required:true,options:S.cohorts.filter(c=>c.programId===p.id&&(!p.levels||c.level===S.ui.sel.level)).map(c=>[c.id,`${cohortName(c,false)} (${c.students})`,ids.includes(c.id)])}],ok:'طرح'});
-    if(!v) return; const o=makeOffering(v.c,v.aud); S.ui.drawer=o.id; render(); toast('اتطرحت. حدد المحاضرين وراجع المجموعات.');
+    const planned=new Set(planGaps().all.map(g=>g.courseId));
+    const cands=S.courses.filter(c=>!S.offerings.some(o=>o.courseId===c.id&&o.offered&&o.audiences.some(a=>ids.includes(a)))).sort((a,b)=>planned.has(b.id)-planned.has(a.id)||(b.semester===S.term.semester)-(a.semester===S.term.semester)||a.code.localeCompare(b.code));
+    if(!cands.length){ toast('كل المواد مطروحة بالفعل للمجموعات دي'); return; }
+    const v=await ask({title:'طرح مادة',wide:true,body:'<p class="meta">مواد الخطة الدراسية الأول. أي مادة من برة الخطة هتتطرح بتنبيه.</p>',fields:[{id:'c',label:'المادة',type:'select',full:true,options:cands.map(c=>[c.id,`${planned.has(c.id)?'':'(من برة الخطة) '}${c.code} · ${c.name} · ${dept(c.dept).name}`])},{id:'aud',label:'الجمهور',type:'checks',required:true,options:S.cohorts.filter(c=>c.programId===p.id&&(!p.levels||c.level===S.ui.sel.level)).map(c=>[c.id,`${cohortName(c,false)} (${c.students})`,ids.includes(c.id)])}],ok:'طرح'});
+    if(!v) return; const o=makeOffering(v.c,v.aud); S.ui.drawer=o.id; render(); toast(planned.has(v.c)?'اتطرحت. حدد المحاضرين وراجع المجموعات.':'اتطرحت، بس المادة دي مش في الخطة الدراسية للمجموعات دي.');
   },
   async offerCourse(d){
     const opts=[]; for(const p of S.programs){ if(p.levels) for(let l=1;l<=p.levels;l++) opts.push([`${p.id}|${l}`,`${p.name} · ${levelName(p,l)}`]); else opts.push([`${p.id}|`,p.name]); }
@@ -830,7 +973,8 @@ const CHG={
   mode(t){ findOff(t.dataset.id).modes[t.dataset.k]=t.value; },
   plan(t){ const co=course(findOff(t.dataset.id).courseId); co.sessions[t.dataset.k][t.dataset.f]=Math.max(1,Number(t.value)||1); },
   reqReason(t){ course(t.dataset.co).reqs[t.dataset.k][t.dataset.i].reason=t.value.trim(); },
-  setting(t){ const [a,b]=t.dataset.k.split('.'); S.settings[a][b]=Math.max(1,Number(t.value)||1); }
+  setting(t){ const [a,b]=t.dataset.k.split('.'); S.settings[a][b]=Math.max(1,Number(t.value)||1); },
+  planPick(t){ const pl=planOf(S.ui.planProg); const n=Number(t.value); if(n>0) pl.picks[t.dataset.k]=n; else delete pl.picks[t.dataset.k]; }
 };
 document.addEventListener('click',async e=>{
   const t=e.target.closest('[data-act]'); if(!t||t.disabled) return;
