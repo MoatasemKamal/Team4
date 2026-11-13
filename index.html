@@ -310,7 +310,7 @@ function seed(){
       {id:'q1',type:'online',from:'d1',date:'10 نوفمبر',status:'new',classId:'k5',scope:'term',text:'ستُدرَّس المجموعة الأولى أونلاين بقية الترم بسبب سفري إلى مؤتمر علمي.'},
       {id:'q3',type:'maintenance',from:'m3',date:'11 نوفمبر',status:'new',roomId:'r10',devicesBroken:2,text:'جهازان في معمل الحاسب 1 لا يعملان (رقم 7 و12).'},
       {id:'q4',type:'exceptional',from:'p1',date:'11 نوفمبر',status:'new',text:'مناقشة رسالة ماجستير، والحضور نحو 25 فردًا.',payload:{title:'مناقشة رسالة ماجستير — قسم المحاسبة',organizer:'إدارة الدراسات العليا',kind:'defense',students:25,day:5,slot:2,reqs:[{eq:'projector',mandatory:true,reason:'عرض الرسالة'}]}},
-      {id:'q5',type:'cancel_once',from:'d7',date:'11 نوفمبر',status:'new',classId:'k7',when:'الأحد 15 نوفمبر',onDate:'2026-11-15',text:'ظرف عائلي، وستُعوَّض المحاضرة لاحقًا.'}
+      {id:'q5',type:'cancel_once',from:'d7',date:'11 نوفمبر',status:'new',classId:'k7',when:'الأحد 15 نوفمبر',onDate:'2026-11-15',text:'حضور اجتماع مجلس الكلية في الموعد نفسه، وستُعوَّض المحاضرة لاحقًا.'}
     ],
     notifications:[
       {id:'n1',type:'info',open:true,at:'5 نوفمبر',title:'دخل مدرج 3 الصيانة',text:'تغيير وحدات التكييف حتى 25 نوفمبر. لم تكن عليه حجوزات عند دخوله الصيانة.'}
@@ -761,7 +761,7 @@ function renderRail(){
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${esc((S.university||'جامعة الإسكندرية')+' · '+((S.faculty&&S.faculty.name)||''))}<br>${S.term.name} · موظف التوزيع</small></div>`+
     `<nav aria-label="القائمة" style="display:contents">`+NAV_GROUPS.map(g=>`<div class="nav-group" role="presentation">${g.t}</div>`+g.items.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')).join('')+
     `<a class="nav ext" href="course-management/"><span>إدارة المواد الدراسية</span><span aria-hidden="true">↖</span></a></nav>`+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 14 نوفمبر 21:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 14 نوفمبر 21:30</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -1510,7 +1510,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('input',e=>{ const t=e.target.closest('[data-inp]'); if(t&&S.ui.newShift) S.ui.newShift[t.dataset.k]=t.value; });
 document.addEventListener('change',e=>{ const t=e.target.closest('[data-chg]'); if(!t) return; CHG[t.dataset.chg](t); render(); });
 window.addEventListener('hashchange',syncHash);
-(function(){ const saved=store.get(SAVE_KEY); if(saved&&saved.rooms&&saved.version===2) S={...saved,ui:S.ui}; bindMaster(); syncFromCM(); })();
+(function(){ const saved=store.get(SAVE_KEY); if(saved&&saved.rooms&&saved.version===2) S={...saved,ui:S.ui}; /* demo wording fix for data saved before 14 Nov */ (S.requests||[]).forEach(q=>{ if(q.id==='q5'&&/ظرف عائلي/.test(q.text||'')) q.text='حضور اجتماع مجلس الكلية في الموعد نفسه، وستُعوَّض المحاضرة لاحقًا.'; }); bindMaster(); syncFromCM(); })();
 syncHash();
 </script>
 </body>
