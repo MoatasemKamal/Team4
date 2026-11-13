@@ -124,14 +124,20 @@ tfoot td{font-weight:600;background:var(--surface-2)}
 .okbox{background:var(--ok-soft);color:var(--ok);border-radius:8px;padding:8px 12px;font-size:13.5px}
 .infobox{background:var(--accent-soft);color:var(--accent);border-radius:8px;padding:8px 12px;font-size:13.5px}
 pre.json{direction:ltr;text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow:auto;max-height:420px;margin:0}
-.overlay{position:fixed;inset:0;background:rgba(8,14,28,.45);display:grid;place-items:center;z-index:40;padding:16px}
-.dialog{background:var(--surface);border-radius:12px;box-shadow:var(--shadow);padding:20px;width:min(480px,100%);display:flex;flex-direction:column;gap:12px;max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain}
+.overlay{position:fixed;inset:0;background:rgba(10,20,30,.45);display:flex;align-items:flex-start;justify-content:center;z-index:40;padding:4vh 16px;overflow-y:auto;overscroll-behavior:contain}
+.dialog{background:var(--surface);border-radius:12px;box-shadow:var(--shadow);padding:20px 20px 0;width:min(480px,100%);display:flex;flex-direction:column;gap:12px;margin:auto 0}
+.dialog.wide{width:min(760px,100%)}
+.dialog .fields{display:flex;flex-direction:column;gap:12px}
+.dialog.wide .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.dialog.wide .fields .full{grid-column:1/-1}
+@media (max-width:560px){ .dialog.wide .fields{grid-template-columns:1fr} }
+html.modal-open,html.modal-open body{overflow:hidden}
 .dialog h3{font-size:18px}
 .dialog label{display:flex;flex-direction:column;gap:4px;font-size:13.5px;color:var(--muted)}
 .dialog label>*{color:var(--ink)}
 .dialog .checkrow{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
 .dlg-err{color:var(--bad);margin:0;font-size:13.5px}
-.dlg-actions{display:flex;gap:8px;flex-direction:row-reverse;justify-content:flex-start;position:sticky;bottom:-20px;margin:0 -20px -20px;padding:12px 20px 20px;background:var(--surface);border-top:1px solid var(--line)}
+.dlg-actions{display:flex;gap:8px;flex-direction:row-reverse;justify-content:flex-start;position:sticky;bottom:0;margin:0 -20px;padding:12px 20px 16px;background:var(--surface);border-top:1px solid var(--line);border-radius:0 0 12px 12px}
 .toast{position:fixed;bottom:20px;right:50%;transform:translateX(50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;z-index:50;box-shadow:var(--shadow);font-weight:500;max-width:90vw}
 .sess{display:flex;flex-wrap:wrap;gap:4px}
 @media (max-width:980px){ .cols{grid-template-columns:1fr} }
@@ -355,7 +361,7 @@ window.addEventListener('storage',e=>{ if(e.key===BUS_ROOMS){ ROOMS=store.get(BU
 /* ============ Dialog ============ */
 function fieldHtml(f){
   const id='f-'+f.id, v=esc(f.value??'');
-  if(f.type==='checks') return `<fieldset style="border:0;padding:0;margin:0"><legend class="meta">${esc(f.label)}</legend>${f.options.map(([k,t,on])=>`<label class="checkrow"><input type="checkbox" name="${id}" value="${k}"${on?' checked':''}> ${esc(t)}</label>`).join('')}</fieldset>`;
+  if(f.type==='checks') return `<fieldset class="full" style="border:0;padding:0;margin:0"><legend class="meta">${esc(f.label)}</legend>${f.options.map(([k,t,on])=>`<label class="checkrow"><input type="checkbox" name="${id}" value="${k}"${on?' checked':''}> ${esc(t)}</label>`).join('')}</fieldset>`;
   let ctl;
   if(f.type==='select') ctl=`<select id="${id}">${f.options.map(([k,t])=>`<option value="${esc(k)}"${String(k)===String(f.value??'')?' selected':''}>${esc(t)}</option>`).join('')}</select>`;
   else if(f.type==='textarea') ctl=`<textarea id="${id}">${v}</textarea>`;
@@ -365,10 +371,11 @@ function fieldHtml(f){
 function ask(o){
   return new Promise(res=>{
     const ov=document.createElement('div'); ov.className='overlay';
-    ov.innerHTML=`<form class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t"><h3 id="dlg-t">${esc(o.title)}</h3>${o.body||''}${(o.fields||[]).map(fieldHtml).join('')}<p class="dlg-err" hidden></p><div class="dlg-actions"><button class="btn ${o.danger?'danger':'primary'}" type="submit">${esc(o.ok||'تأكيد')}</button><button type="button" class="btn ghost" data-x>رجوع</button></div></form>`;
+    ov.innerHTML=`<form class="dialog${o.wide?' wide':''}" role="dialog" aria-modal="true" aria-labelledby="dlg-t"><h3 id="dlg-t">${esc(o.title)}</h3>${o.body||''}<div class="fields">${(o.fields||[]).map(fieldHtml).join('')}</div><p class="dlg-err" hidden></p><div class="dlg-actions"><button class="btn ${o.danger?'danger':'primary'}" type="submit">${esc(o.ok||'تأكيد')}</button><button type="button" class="btn ghost" data-x>رجوع</button></div></form>`;
     document.body.append(ov);
     const form=ov.querySelector('form'); (form.querySelector('input,select,textarea')||form.querySelector('[type=submit]')).focus();
-    const close=v=>{ ov.remove(); res(v); };
+    document.documentElement.classList.add('modal-open');
+    const close=v=>{ ov.remove(); if(!document.querySelector('.overlay')) document.documentElement.classList.remove('modal-open'); res(v); };
     ov.querySelector('[data-x]').onclick=()=>close(null);
     ov.addEventListener('keydown',e=>{ if(e.key==='Escape') close(null); });
     form.onsubmit=e=>{
@@ -388,7 +395,7 @@ function renderRail(){
   const pending=S.offerings.filter(o=>o.offered&&sendState(o)[1]!=='ok').length;
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة المواد الدراسية</h1><small>${S.term.name} · الأقسام وشئون الطلاب</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${k==='outbox'&&pending?`<span class="badge">${pending}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 15:30</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 
 function sessChips(o){
@@ -575,7 +582,7 @@ const ACT={
     if(!v) return; const o=off(v.c); if(o){ o.offered=true; S.ui.drawer=o.id; } else ACT.offer({id:v.c}); render();
   },
   async newCourse(){
-    const v=await ask({title:'مادة جديدة في الكتالوج',fields:[
+    const v=await ask({title:'مادة جديدة في الكتالوج',wide:true,fields:[
       {id:'code',label:'الكود',required:true},{id:'name',label:'الاسم',required:true},
       {id:'dept',label:'القسم',type:'select',options:S.depts.map(d=>[d,d]),value:'علوم الحاسب'},
       {id:'cohort',label:'الفرقة',type:'select',options:S.cohorts.map(c=>[c.id,c.name]),value:S.ui.cohort},
