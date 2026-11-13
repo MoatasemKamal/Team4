@@ -54,6 +54,8 @@ main{flex:1;min-width:0;padding:24px 28px 60px}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1px solid var(--line)}
 .tab{border:0;background:transparent;padding:10px 14px;border-bottom:3px solid transparent;cursor:pointer;font-weight:600;color:var(--muted);display:flex;gap:8px;align-items:center}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-group{align-self:center;font-size:12px;color:var(--muted);padding:0 6px 0 2px;border-inline-start:1px solid var(--line);margin-inline-start:4px}
+.tab-group:first-child{border:0;margin:0}
 .tab .n{font-size:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:0 7px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;display:flex;flex-direction:column;gap:2px}
@@ -164,7 +166,7 @@ const KINDS={lecture:'محاضرة',section:'سكشن',lab:'معمل'};
 const MODE={inperson:'حضوري',online:'أونلاين',hybrid:'هجين'};
 /* Same equipment keys as the rooms system, so requirements travel between the two unchanged. */
 let EQ={projector:'بروجكتور',internet:'إنترنت',smartboard:'سبورة ذكية',ac:'تكييف',mic:'مايك وسماعات',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',oracle:'Oracle',matlab:'MATLAB',network:'معدات شبكات'};
-const NAV=[['cohorts','المواد حسب الفرقة'],['catalog','كتالوج المواد'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
+const NAV=[['cohorts','المواد حسب الفرقة والبرنامج'],['catalog','كتالوج المواد'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
 
 /* ============ Seed data (sample) ============ */
 function seed(){
@@ -172,10 +174,11 @@ function seed(){
   const R=(eq,mandatory=false,reason='')=>({eq,mandatory,reason});
   const st={
     seq:200,
-    term:{name:'الفصل الأول 2026/2027',semester:1},
+    term:{name:'الفصل الأول 2026/2027',semester:1,weeks:16},
     settings:{maxGroup:{section:35,lab:30},maxLoad:{doctor:12,ta:16},buffer:10},
     depts:['عام','علوم الحاسب','نظم المعلومات','الرياضيات','الفيزياء'],
-    cohorts:[{id:'c1',name:'الفرقة الأولى'},{id:'c2',name:'الفرقة الثانية'},{id:'c3',name:'الفرقة الثالثة'},{id:'c4',name:'الفرقة الرابعة'}],
+    cohorts:[{id:'c1',name:'الفرقة الأولى',type:'undergrad'},{id:'c2',name:'الفرقة الثانية',type:'undergrad'},{id:'c3',name:'الفرقة الثالثة',type:'undergrad'},{id:'c4',name:'الفرقة الرابعة',type:'undergrad'},
+      {id:'c5',name:'ماجستير علوم الحاسب',type:'master',dept:'علوم الحاسب'},{id:'c6',name:'ماجستير نظم المعلومات',type:'master',dept:'نظم المعلومات'}],
     people:[
       {id:'d1',name:'د. أحمد سالم',role:'doctor'},{id:'d2',name:'د. منى عبد الرحمن',role:'doctor'},{id:'d3',name:'د. خالد فوزي',role:'doctor'},
       {id:'d4',name:'د. هالة مصطفى',role:'doctor'},{id:'d5',name:'د. ياسر النجار',role:'doctor'},{id:'d6',name:'د. سامي عادل',role:'doctor'},{id:'d7',name:'د. ريم حسن',role:'doctor'},
@@ -196,17 +199,24 @@ function seed(){
       {id:'co7',code:'IS410',name:'أمن المعلومات',dept:'نظم المعلومات',cohort:'c4',semester:1,credits:3,sessions:{lecture:L(2),lab:L(2)},reqs:{lecture:[R('projector',true,'عرض سيناريوهات الهجمات')],lab:[R('computers',true,'تطبيق عملي'),R('network')]}},
       {id:'co13',code:'CS450',name:'الذكاء الاصطناعي',dept:'علوم الحاسب',cohort:'c4',semester:1,credits:3,sessions:{lecture:L(2),lab:L(2)},reqs:{lecture:[R('projector')],lab:[R('computers',true,'تدريب نماذج'),R('internet',true,'تحميل مكتبات وبيانات')]}},
       {id:'co14',code:'CS498',name:'مشروع التخرج 1',dept:'علوم الحاسب',cohort:'c4',semester:1,credits:2,sessions:{section:L(2)},reqs:{section:[R('projector')]}},
+      {id:'co20',code:'CS601',name:'الحوسبة السحابية المتقدمة',dept:'علوم الحاسب',cohort:'c5',semester:1,credits:3,sessions:{lecture:L(3),lab:{hours:2,perWeek:1,count:6,startWeek:5}},reqs:{lecture:[R('projector',true,'عرض معماريات الأنظمة'),R('internet',true,'الدخول على منصات السحابة')],lab:[R('computers',true,'تطبيق عملي'),R('internet',true,'الدخول على منصات السحابة')]}},
+      {id:'co21',code:'CS610',name:'تعلم الآلة المتقدم',dept:'علوم الحاسب',cohort:'c5',semester:1,credits:3,sessions:{lecture:L(3)},reqs:{lecture:[R('projector',true,'عرض النماذج والنتائج')]}},
+      {id:'co22',code:'IS620',name:'إدارة مشروعات نظم المعلومات',dept:'نظم المعلومات',cohort:'c6',semester:1,credits:3,sessions:{lecture:L(3),section:{hours:2,perWeek:1,count:6,startWeek:7}},reqs:{lecture:[R('projector')],section:[R('smartboard')]}},
       {id:'co15',code:'CS302',name:'الرسوم بالحاسب',dept:'علوم الحاسب',cohort:'c3',semester:2,credits:3,sessions:{lecture:L(2),lab:L(2)},reqs:{lecture:[R('projector')],lab:[R('computers',true,'')]}},
       {id:'co16',code:'IS221',name:'نظم المعلومات الإدارية',dept:'نظم المعلومات',cohort:'c2',semester:2,credits:3,sessions:{lecture:L(2)},reqs:{lecture:[R('projector')]}}
     ],
     offerings:[]
   };
+  /* Teaching plan defaults: 12 lectures from week 1; sections and labs 10 sessions from week 3. */
+  for(const c of st.courses) for(const [k,x] of Object.entries(c.sessions)){ if(x.count==null) x.count=k==='lecture'?12:10; if(x.startWeek==null) x.startWeek=k==='lecture'?1:3; }
+  st.courses.find(c=>c.id==='co14').sessions.section={hours:2,perWeek:1,count:12,startWeek:1};
   const O=(courseId,students,lectureBy,ta,modes={},sent=false)=>({id:'of_'+courseId,courseId,students,offered:true,modes,staff:{lecture:lectureBy},groupCount:{},defaultTA:ta,groups:{},sent:null,sentAt:null,_sendNow:sent});
   st.offerings=[
     O('co5',100,'d4','m1',{},true), O('co6',200,'d5',null,{lecture:'online'},true), O('co8',180,'d6','m3'), O('co9',190,'d7','m4'),
     O('co3',40,'d3','m2',{},true), O('co4',105,'d1','m2',{},true), O('co10',95,'d6','m3'),
     O('co1',45,'d1','m1',{},true), O('co11',48,null,'m4'), O('co12',60,'d7',null),
-    O('co2',44,'d2','m2',{},true), O('co7',38,'d2','m3',{},true), O('co13',52,'d6','m3'), O('co14',50,null,'m1')
+    O('co2',44,'d2','m2',{},true), O('co7',38,'d2','m3',{},true), O('co13',52,'d6','m3'), O('co14',50,null,'m1'),
+    O('co20',18,'d6','m4'), O('co21',22,'d3',null), O('co22',15,'d7','m3')
   ];
   return st;
 }
@@ -242,6 +252,10 @@ function rebuildGroups(o,k,fillTA){
   const prev=o.groups[k]||[]; const base=Math.floor(o.students/n), extra=o.students%n;
   o.groups[k]=Array.from({length:n},(_,i)=>({id:'G'+(i+1),students:base+(i<extra?1:0),instructor:prev[i]?.instructor??fillTA??prev[0]?.instructor??null}));
 }
+function weeksOf(s){ return {from:s.startWeek,to:s.startWeek+Math.ceil(s.count/s.perWeek)-1}; }
+const KIND_PLURAL={lecture:'محاضرة',section:'سكشن',lab:'معمل'};
+function planText(co){ return Object.entries(co.sessions).map(([k,x])=>{ const w=weeksOf(x); return `${x.count} ${KIND_PLURAL[k]} (أسبوع ${w.from}–${w.to})`; }).join(' · '); }
+const isMaster=cid=>cohort(cid)&&cohort(cid).type==='master';
 function hoursOf(o,k){ const s=course(o.courseId).sessions[k]; return s.hours*s.perWeek; }
 /* Every session that needs a place: one lecture for all students, one per group for sections and labs. */
 function sessionsOf(o){
@@ -249,7 +263,8 @@ function sessionsOf(o){
   for(const k of Object.keys(co.sessions)){
     const s=co.sessions[k];
     const list=k==='lecture'?[{id:'all',students:o.students,instructor:o.staff.lecture}]:(o.groups[k]||[]);
-    for(const g of list) out.push({ref:`${co.code}-${k}-${g.id}`,kind:k,group:g.id,students:g.students,instructor:g.instructor,mode:modeOf(o,k),hours:s.hours,perWeek:s.perWeek,reqs:co.reqs[k]||[]});
+    const w=weeksOf(s);
+    for(const g of list) out.push({ref:`${co.code}-${k}-${g.id}`,kind:k,group:g.id,students:g.students,instructor:g.instructor,mode:modeOf(o,k),hours:s.hours,perWeek:s.perWeek,count:s.count,fromWeek:w.from,toWeek:w.to,reqs:co.reqs[k]||[]});
   }
   return out;
 }
@@ -258,9 +273,10 @@ function payload(o){
   return {
     term:S.term.name, offeringId:o.id,
     course:{id:co.id,code:co.code,name:co.name,department:co.dept,creditHours:co.credits},
-    cohort:{id:co.cohort,name:cohort(co.cohort).name},
+    cohort:{id:co.cohort,name:cohort(co.cohort).name,type:cohort(co.cohort).type||'undergrad'},
     sessions:sessionsOf(o).map(s=>({
       ref:s.ref, kind:s.kind, group:s.group, students:s.students,
+      totalSessions:s.count, fromWeek:s.fromWeek, toWeek:s.toWeek,
       sessionsPerWeek:s.perWeek, hoursEach:s.hours, deliveryMode:s.mode,
       instructor:s.instructor?{id:s.instructor,name:person(s.instructor).name,role:person(s.instructor).role}:null,
       needsRoom:s.mode!=='online',
@@ -279,6 +295,7 @@ function overloaded(pid){ const p=person(pid); return loadOf(pid).hours>S.settin
 function issuesOf(o){
   const co=course(o.courseId), bad=[], warn=[];
   if(!o.students) bad.push('عدد الطلاب مش متسجل');
+  for(const [k,x] of Object.entries(co.sessions)){ const w=weeksOf(x); if(w.to>S.term.weeks) bad.push(`خطة ال${KINDS[k]} بتخلص أسبوع ${w.to} والترم ${S.term.weeks} أسبوع`); }
   for(const k of Object.keys(co.sessions)){
     if(k==='lecture'){ if(!o.staff.lecture) bad.push('المحاضرة ملهاش دكتور'); }
     else { const missing=(o.groups[k]||[]).filter(g=>!g.instructor).length; if(missing) bad.push(`${missing} مجموعة ${KINDS[k]} ملهاش معيد`);
@@ -351,12 +368,15 @@ function allocOf(o){
   const need=list.filter(x=>x.s.mode!=='online');
   return {list,done:need.filter(x=>x.a&&x.a.state==='scheduled').length,need:need.length,known:list.some(x=>x.a)};
 }
-const ALLOC_KIND={scheduled:'ok',online:'off',waiting:'bad',unscheduled:'bad',issue:'warn',cancelled:'off'};
+const ALLOC_KIND={scheduled:'ok',online:'off',waiting:'bad',unscheduled:'bad',issue:'warn',cancelled:'off',pending:'acc',rejected:'bad'};
 function allocCell(o){
   if(!o.offered||!o.sent) return '<span class="meta">—</span>';
   const a=allocOf(o);
   if(!ROOMS) return '<span class="meta">مستني نظام القاعات</span>';
   if(!a.known) return '<span class="meta">لسه ماوصلش</span>';
+  const pend=a.list.filter(x=>x.a&&x.a.state==='pending').length, rej=a.list.filter(x=>x.a&&x.a.state==='rejected').length;
+  if(rej) return pill('طلب التوزيع اترفض','bad');
+  if(pend) return pill(`${pend} مقترح، مستني اعتماد الموظف`,'acc');
   return a.need?pill(`${a.done} / ${a.need} اتوزعت`,a.done===a.need?'ok':a.done?'warn':'bad'):pill('أونلاين','off');
 }
 window.addEventListener('storage',e=>{ if(e.key===BUS_ROOMS){ ROOMS=store.get(BUS_ROOMS); adoptMaster(); render(); } });
@@ -398,13 +418,14 @@ function renderRail(){
   const pending=S.offerings.filter(o=>o.offered&&sendState(o)[1]!=='ok').length;
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة المواد الدراسية</h1><small>${S.term.name} · الأقسام وشئون الطلاب</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${k==='outbox'&&pending?`<span class="badge">${pending}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 16:00</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 17:00</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 
 function sessChips(o){
   const co=course(o.courseId);
   return Object.keys(co.sessions).map(k=>{ const s=co.sessions[k]; const n=k==='lecture'?1:(o.groups[k]||[]).length; const m=modeOf(o,k);
-    return `<span class="tag">${KINDS[k]}${n>1?' × '+n+' مجموعات':''} · ${s.hours} س${s.perWeek>1?' × '+s.perWeek:''}${m!=='inperson'?' · '+MODE[m]:''}</span>`; }).join('');
+    const w=weeksOf(s);
+    return `<span class="tag">${s.count} ${KIND_PLURAL[k]}${n>1?' × '+n+' مجموعات':''} · ${s.hours} س · أ${w.from}–${w.to}${m!=='inperson'?' · '+MODE[m]:''}</span>`; }).join('');
 }
 function viewCohorts(){
   const cid=S.ui.cohort;
@@ -416,10 +437,13 @@ function viewCohorts(){
   const blocked=active.filter(o=>issuesOf(o).bad.length).length;
   const notSent=active.filter(o=>sendState(o)[1]!=='ok').length;
   const maxStudents=Math.max(0,...active.map(o=>o.students));
-  const tabs=S.cohorts.map(c=>{ const n=S.offerings.filter(o=>o.offered&&course(o.courseId).cohort===c.id&&course(o.courseId).semester===S.term.semester).length; return `<button class="tab${c.id===cid?' on':''}" data-act="cohort" data-id="${c.id}" aria-pressed="${c.id===cid}">${esc(c.name)} <span class="n">${n}</span></button>`; }).join('');
-  return `<div class="page-head"><div><h2>المواد حسب الفرقة</h2><p>المواد المطروحة لكل فرقة في ${S.term.name}، ومجموعاتها ومحاضريها، وحالة إرسالها لنظام القاعات.</p></div>
+  const tabOf=c=>{ const n=S.offerings.filter(o=>o.offered&&course(o.courseId).cohort===c.id&&course(o.courseId).semester===S.term.semester).length; return `<button class="tab${c.id===cid?' on':''}" data-act="cohort" data-id="${c.id}" aria-pressed="${c.id===cid}">${esc(c.name)} <span class="n">${n}</span></button>`; };
+  const ug=S.cohorts.filter(c=>c.type!=='master'), ms=S.cohorts.filter(c=>c.type==='master');
+  const tabs=`<span class="tab-group">البكالوريوس</span>${ug.map(tabOf).join('')}<span class="tab-group">الماجستير</span>${ms.map(tabOf).join('')}<button class="tab" data-act="newProgram" style="color:var(--accent)">+ برنامج ماجستير</button>`;
+  return `<div class="page-head"><div><h2>المواد حسب الفرقة والبرنامج</h2><p>المواد المطروحة لكل فرقة وكل برنامج ماجستير في ${S.term.name}، وخطة تدريسها ومجموعاتها ومحاضريها، وحالة إرسالها لنظام القاعات.</p></div>
   <div class="inline"><button class="btn" data-act="offerFromCatalog">طرح مادة من الكتالوج</button><button class="btn primary" data-act="sendCohort" ${notSent?'':'disabled'}>إرسال الجاهز لنظام القاعات (${notSent})</button></div></div>
-  <div class="tabs" role="group" aria-label="الفرق">${tabs}</div>
+  <div class="tabs" role="group" aria-label="الفرق والبرامج">${tabs}</div>
+  ${isMaster(cid)?`<p class="hint" style="margin-top:-8px">${esc(cohort(cid).name)} · برنامج ماجستير${cohort(cid).dept?' · قسم '+esc(cohort(cid).dept):''}</p>`:''}
   <div class="tiles">
     <div class="tile"><b>${active.length}</b><span>مادة مطروحة</span></div>
     <div class="tile"><b>${credits}</b><span>ساعة معتمدة</span></div>
@@ -440,12 +464,12 @@ function viewCatalog(){
   return `<div class="page-head"><div><h2>كتالوج المواد</h2><p>كل المواد في اللائحة، والفرقة والفصل اللي بتتدرس فيه.</p></div><button class="btn primary" data-act="newCourse">مادة جديدة</button></div>
   <div class="filters">
     <input type="text" data-chg="cat" data-k="q" value="${esc(f.q)}" placeholder="بحث بالاسم أو الكود" aria-label="بحث">
-    <select data-chg="cat" data-k="cohort" aria-label="الفرقة"><option value="">كل الفرق</option>${S.cohorts.map(c=>`<option value="${c.id}"${f.cohort===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select>
+    <select data-chg="cat" data-k="cohort" aria-label="الفرقة أو البرنامج"><option value="">كل الفرق والبرامج</option>${S.cohorts.map(c=>`<option value="${c.id}"${f.cohort===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select>
     <select data-chg="cat" data-k="dept" aria-label="القسم"><option value="">كل الأقسام</option>${S.depts.map(d=>`<option${f.dept===d?' selected':''}>${esc(d)}</option>`).join('')}</select>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>الكود</th><th>المادة</th><th>القسم</th><th>الفرقة</th><th>الفصل</th><th>س.م</th><th>أنواع الحصص</th><th>في الترم الحالي</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>الكود</th><th>المادة</th><th>القسم</th><th>الفرقة / البرنامج</th><th>الفصل</th><th>س.م</th><th>خطة التدريس</th><th>في الترم الحالي</th></tr></thead><tbody>
   ${list.map(c=>{ const o=off(c.id); const now=c.semester===S.term.semester;
-    return `<tr><td class="num"><b>${esc(c.code)}</b></td><td>${esc(c.name)}</td><td>${esc(c.dept)}</td><td>${esc(cohort(c.cohort).name)}</td><td>${c.semester===1?'الأول':'الثاني'}</td><td class="num">${c.credits}</td><td>${Object.entries(c.sessions).map(([k,s])=>`<span class="tag">${KINDS[k]} ${s.hours} س</span>`).join('')}</td>
+    return `<tr><td class="num"><b>${esc(c.code)}</b></td><td>${esc(c.name)}</td><td>${esc(c.dept)}</td><td>${esc(cohort(c.cohort).name)}</td><td>${c.semester===1?'الأول':'الثاني'}</td><td class="num">${c.credits}</td><td>${Object.entries(c.sessions).map(([k,s])=>{ const w=weeksOf(s); return `<span class="tag">${s.count} ${KIND_PLURAL[k]} · ${s.hours} س · أ${w.from}–${w.to}</span>`; }).join('')}</td>
     <td>${!now?'<span class="meta">الفصل التاني</span>':o?(o.offered?`<button class="btn sm" data-act="openOff" data-id="${o.id}">مطروحة · فتح</button>`:`<button class="btn sm" data-act="reoffer" data-id="${o.id}">رجّع طرحها</button>`):`<button class="btn sm primary" data-act="offer" data-id="${c.id}">طرح في الترم</button>`}</td></tr>`; }).join('')}
   </tbody></table></div>`;
 }
@@ -503,7 +527,11 @@ function drawerOffering(o){
     const groups=kk==='lecture'?null:(o.groups[kk]||[]);
     return `<section class="card kind" aria-label="${KINDS[kk]}"><div class="kind-head"><h5>${KINDS[kk]}</h5>
       <div class="inline"><label>الساعات <input type="number" min="1" max="6" style="width:64px" data-chg="hours" data-id="${o.id}" data-k="${kk}" value="${s.hours}"></label>
-      <label>مرات/أسبوع <input type="number" min="1" max="4" style="width:64px" data-chg="perWeek" data-id="${o.id}" data-k="${kk}" value="${s.perWeek}"></label>
+      <label>مرات/أسبوع <input type="number" min="1" max="4" style="width:64px" data-chg="perWeek" data-id="${o.id}" data-k="${kk}" value="${s.perWeek}"></label></div></div>
+      <div class="inline"><label>عدد ال${KIND_PLURAL[kk]==='معمل'?'معامل':KIND_PLURAL[kk]==='سكشن'?'سكاشن':'محاضرات'} في الترم <input type="number" min="1" max="40" style="width:64px" data-chg="plan" data-f="count" data-id="${o.id}" data-k="${kk}" value="${s.count}"></label>
+      <label>يبدأ من أسبوع <input type="number" min="1" max="${S.term.weeks}" style="width:64px" data-chg="plan" data-f="startWeek" data-id="${o.id}" data-k="${kk}" value="${s.startWeek}"></label>
+      <span class="${weeksOf(s).to>S.term.weeks?'tag bad':'tag'}">من أسبوع ${weeksOf(s).from} لأسبوع ${weeksOf(s).to} (${Math.ceil(s.count/s.perWeek)} أسبوع)</span></div>
+      <div class="kind-head"><span></span><div class="inline">
       <label>طريقة التدريس <select data-chg="mode" data-id="${o.id}" data-k="${kk}">${Object.entries(MODE).map(([m,t])=>`<option value="${m}"${modeOf(o,kk)===m?' selected':''}>${t}</option>`).join('')}</select></label></div></div>
       ${kk==='lecture'?`<div class="inline"><label>الدكتور <select data-chg="lectureBy" data-id="${o.id}">${staffOpts(doctors,o.staff.lecture)}</select></label><span>${o.students} طالب في محاضرة واحدة</span></div>`
       :`<div class="inline"><label>عدد المجموعات <input type="number" min="1" max="20" style="width:64px" data-chg="groupCount" data-id="${o.id}" data-k="${kk}" value="${groups.length}"></label>${o.groupCount[kk]?`<button class="btn sm ghost" data-act="autoGroups" data-id="${o.id}" data-k="${kk}">رجّعه تلقائي</button>`:`<span class="hint">تلقائي: ${o.students} ÷ ${S.settings.maxGroup[kk]} كحد أقصى</span>`}</div>
@@ -569,7 +597,7 @@ const ACT={
   },
   delReq(d){ course(d.co).reqs[d.k].splice(Number(d.i),1); },
   addReq(d){ const co=course(d.co); const e=$(`#add-${d.co}-${d.k}`).value; if(!e) return; (co.reqs[d.k]=co.reqs[d.k]||[]).push({eq:e,mandatory:false,reason:''}); },
-  addKind(d){ const co=course(d.co); co.sessions[d.k]={hours:2,perWeek:1}; co.reqs[d.k]=co.reqs[d.k]||[]; const o=off(co.id); if(o&&d.k!=='lecture') rebuildGroups(o,d.k); },
+  addKind(d){ const co=course(d.co); co.sessions[d.k]={hours:2,perWeek:1,count:d.k==='lecture'?12:10,startWeek:d.k==='lecture'?1:3}; co.reqs[d.k]=co.reqs[d.k]||[]; const o=off(co.id); if(o&&d.k!=='lecture') rebuildGroups(o,d.k); },
   offer(d){ const co=course(d.id); const o={id:'of_'+co.id,courseId:co.id,students:0,offered:true,modes:{},staff:{lecture:null},groupCount:{},groups:{},sent:null,sentAt:null};
     S.offerings.push(o); for(const k of Object.keys(co.sessions)) if(k!=='lecture') rebuildGroups(o,k); S.ui.drawer=o.id; toast('اتطرحت. سجّل عدد الطلاب والمحاضرين.'); },
   reoffer(d){ findOff(d.id).offered=true; },
@@ -584,17 +612,24 @@ const ACT={
     const v=await ask({title:'طرح مادة',fields:[{id:'c',label:'المادة',type:'select',options:cands.map(c=>[c.id,`${c.code} · ${c.name}`])}],ok:'طرح'});
     if(!v) return; const o=off(v.c); if(o){ o.offered=true; S.ui.drawer=o.id; } else ACT.offer({id:v.c}); render();
   },
+  async newProgram(){
+    const v=await ask({title:'برنامج ماجستير جديد',fields:[{id:'name',label:'اسم البرنامج',required:true,value:'ماجستير '},{id:'dept',label:'القسم',type:'select',options:S.depts.map(d=>[d,d]),value:'علوم الحاسب'}],ok:'إضافة'});
+    if(!v) return; if(S.cohorts.some(c=>c.name===v.name)){ toast('البرنامج ده موجود بالفعل'); return; }
+    const c={id:nid('c'),name:v.name,type:'master',dept:v.dept}; S.cohorts.push(c); S.ui.cohort=c.id; render(); toast('اتضاف البرنامج. ضيف مواده من الكتالوج.');
+  },
   async newCourse(){
     const v=await ask({title:'مادة جديدة في الكتالوج',wide:true,fields:[
       {id:'code',label:'الكود',required:true},{id:'name',label:'الاسم',required:true},
       {id:'dept',label:'القسم',type:'select',options:S.depts.map(d=>[d,d]),value:'علوم الحاسب'},
-      {id:'cohort',label:'الفرقة',type:'select',options:S.cohorts.map(c=>[c.id,c.name]),value:S.ui.cohort},
+      {id:'cohort',label:'الفرقة / البرنامج',type:'select',options:S.cohorts.map(c=>[c.id,c.name]),value:S.ui.cohort},
+      {id:'lectures',label:'عدد المحاضرات في الترم',type:'number',value:'12',min:1},
+      {id:'others',label:'عدد السكاشن أو المعامل في الترم',type:'number',value:'10',min:1},
       {id:'semester',label:'الفصل',type:'select',options:[['1','الأول'],['2','الثاني']],value:String(S.term.semester)},
       {id:'credits',label:'الساعات المعتمدة',type:'number',value:'3',min:1},
       {id:'kinds',label:'أنواع الحصص',type:'checks',required:true,options:[['lecture','محاضرة',true],['section','سكشن',true],['lab','معمل',false]]}],ok:'إضافة'});
     if(!v) return;
     if(S.courses.some(c=>c.code.toLowerCase()===v.code.toLowerCase())){ toast(`الكود ${v.code} موجود بالفعل`); return; }
-    const sessions={}, reqs={}; for(const k of v.kinds){ sessions[k]={hours:2,perWeek:1}; reqs[k]=[]; }
+    const sessions={}, reqs={}; for(const k of v.kinds){ sessions[k]={hours:2,perWeek:1,count:Math.max(1,Number(k==='lecture'?v.lectures:v.others)||10),startWeek:k==='lecture'?1:3}; reqs[k]=[]; }
     S.courses.push({id:nid('co'),code:v.code,name:v.name,dept:v.dept,cohort:v.cohort,semester:Number(v.semester),credits:Number(v.credits)||3,sessions,reqs});
     render(); toast('اتضافت للكتالوج. اطرحها من عمود "في الترم الحالي".');
   }
@@ -607,6 +642,7 @@ const CHG={
   groupCount(t){ const o=findOff(t.dataset.id); o.groupCount[t.dataset.k]=Math.max(1,Number(t.value)||1); rebuildGroups(o,t.dataset.k); },
   mode(t){ findOff(t.dataset.id).modes[t.dataset.k]=t.value; },
   hours(t){ const co=course(findOff(t.dataset.id).courseId); co.sessions[t.dataset.k].hours=Math.max(1,Number(t.value)||1); },
+  plan(t){ const co=course(findOff(t.dataset.id).courseId); co.sessions[t.dataset.k][t.dataset.f]=Math.max(1,Number(t.value)||1); },
   perWeek(t){ const co=course(findOff(t.dataset.id).courseId); co.sessions[t.dataset.k].perWeek=Math.max(1,Number(t.value)||1); },
   reqReason(t){ course(t.dataset.co).reqs[t.dataset.k][t.dataset.i].reason=t.value.trim(); },
   setting(t){ const [a,b]=t.dataset.k.split('.'); S.settings[a][b]=Math.max(1,Number(t.value)||1); if(a==='maxGroup') for(const o of S.offerings) if(o.groups[b]&&!o.groupCount[b]) rebuildGroups(o,b); }

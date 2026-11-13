@@ -117,6 +117,7 @@ tbody tr.click{cursor:pointer} tbody tr.click:hover{background:var(--surface-2)}
 .chip-cls.st-online{border-inline-start-color:var(--off);border-style:dashed;border-inline-start-style:solid}
 .chip-cls.st-exc{border-inline-start-color:var(--accent)}
 .chip-cls.st-shift{border-inline-start-color:var(--accent);background:var(--accent-soft)}
+.chip-cls.st-pending{border-inline-start-color:var(--accent);border-style:dashed;border-inline-start-style:solid;background:var(--accent-soft)}
 .chip-cls.st-ghost{border-inline-start-color:var(--off);background:transparent;opacity:.75}
 .chip-cls.st-ghost b{text-decoration:line-through}
 .grid tr.today td.day{color:var(--accent)}
@@ -211,7 +212,7 @@ const DEF_EQ={projector:'بروجكتور',internet:'إنترنت',smartboard:'�
 let EQ=DEF_EQ, ROOMKIND=DEF_ROOMKIND; // bound to the master data in state (bindMaster)
 const MODE={inperson:'حضوري',online:'أونلاين',hybrid:'هجين'};
 const STATE_LABEL={available:['متاح','ok'],partial:['متاح جزئياً','warn'],maintenance:['صيانة','bad'],closed:['مقفول','off']};
-const REQ_TYPE={shift:'نقل محاضرات',online:'تحويل أونلاين',booking:'طلب حجز',maintenance:'بلاغ عطل',exceptional:'حجز استثنائي',cancel_once:'إلغاء مرة واحدة'};
+const REQ_TYPE={cm:'طلب توزيع',shift:'نقل محاضرات',online:'تحويل أونلاين',booking:'طلب حجز',maintenance:'بلاغ عطل',exceptional:'حجز استثنائي',cancel_once:'إلغاء مرة واحدة'};
 const NAV=[['dashboard','لوحة المتابعة'],['requests','الطلبات'],['schedule','الجدول الأسبوعي'],['calendar','التقويم'],['rooms','القاعات والمعامل'],['courses','المواد والمتطلبات'],['preferred','القاعات المفضلة'],['master','البيانات الأساسية'],['log','سجل التغييرات'],['settings','الإعدادات']];
 
 /* ============ Seed data (sample) ============ */
@@ -347,8 +348,13 @@ function reqsOf(c){
   }
   return list;
 }
-function occupant(roomId,day,slot,exceptId){
-  return S.classes.find(o=>o.status==='active' && o.roomId===roomId && o.day===day && o.slot===slot && o.id!==exceptId);
+/* Sessions run for a range of term weeks (from the course plan); two sessions clash only if their weeks overlap. */
+const wk=c=>c.weeks||[1,(S.term&&S.term.weeks)||16];
+const overlapW=(a,b)=>{ const x=wk(a), y=wk(b); return x[0]<=y[1]&&y[0]<=x[1]; };
+const weeksText=c=>{ const w=wk(c); return `أسبوع ${w[0]}–${w[1]}${c.total?` · ${c.total} ${S.usage[c.kind]||''}`:''}`; };
+const isMasterCohort=id=>{ const c=cohort(id); return !!(c&&c.type==='master'); };
+function occupant(roomId,day,slot,exceptId,c){
+  return S.classes.find(o=>o.status==='active' && o.roomId===roomId && o.day===day && o.slot===slot && o.id!==exceptId && (!c||overlapW(o,c)));
 }
 function prefFor(r,c){
   if(!c.instructor) return null;
@@ -369,7 +375,7 @@ function evaluate(r,c,opts={}){
   if(!cap) return fail(`غير مهيأ لـ${S.usage[c.kind]}`);
   out.cap=cap;
   if(out.need>cap.max) return fail(`السعة ${cap.max}${cap.byDevices?' (عدد الأجهزة الشغالة)':''} أقل من المطلوب ${out.need}`);
-  if(!opts.ignoreTime){ const occ=occupant(r.id,c.day,c.slot,c.id); if(occ) return fail(`محجوز لـ ${shortLabel(occ)}`); }
+  if(!opts.ignoreTime){ const occ=occupant(r.id,c.day,c.slot,c.id,c); if(occ) return fail(`محجوز لـ ${shortLabel(occ)}`); }
   for(const q of reqsOf(c)){
     const s=r.equipment[q.eq]; if(s==='ok') continue;
     const what=EQ[q.eq]+(s==='broken'?' (عطلان)':'');
@@ -390,7 +396,7 @@ function currentFit(c){ return c.roomId?evaluate(room(c.roomId),c):null; }
 function conflictsOf(c){
   const out=[]; if(c.status!=='active'||c.day==null) return out;
   for(const o of S.classes){
-    if(o.id===c.id||o.status!=='active'||o.day!==c.day||o.slot!==c.slot) continue;
+    if(o.id===c.id||o.status!=='active'||o.day!==c.day||o.slot!==c.slot||!overlapW(o,c)) continue;
     if(c.instructor && o.instructor===c.instructor) out.push(`${person(c.instructor).name} عنده كمان: ${label(o)}`);
     if(c.cohort && o.cohort===c.cohort && (c.group==='all'||o.group==='all'||c.group===o.group)) out.push(`${cohort(c.cohort).name}${c.group!=='all'?' '+c.group:''} عندها كمان: ${label(o)}`);
   }
@@ -399,20 +405,20 @@ function conflictsOf(c){
 }
 function classStatus(c){
   if(c.status==='cancelled') return 'cancelled';
+  if(c.pending) return 'pending';
   if(c.day==null) return 'unscheduled';
   if(c.mode==='online') return 'online';
   if(!c.roomId) return 'waiting';
   if(conflictsOf(c).length) return 'issue';
   return 'ok';
 }
-const CLS_STATUS={unscheduled:['محتاجة موعد','bad'],ok:['في مكانها','ok'],waiting:['في الانتظار','bad'],issue:['محتاجة مراجعة','warn'],online:['أونلاين','off'],cancelled:['ملغية','off']};
+const CLS_STATUS={pending:['مقترح، مستني اعتمادك','acc'],unscheduled:['محتاجة موعد','bad'],ok:['في مكانها','ok'],waiting:['في الانتظار','bad'],issue:['محتاجة مراجعة','warn'],online:['أونلاين','off'],cancelled:['ملغية','off']};
 
 /* Who could use room r at day/slot: waiting classes first, then classes sitting in a worse room. */
 function freedCandidates(roomId,day,slot){
   const r=room(roomId); const res=[];
-  if(occupant(roomId,day,slot)) return res;
   for(const c of S.classes){
-    if(c.status!=='active'||c.mode==='online'||c.day!==day||c.slot!==slot||c.roomId===roomId) continue;
+    if(c.status!=='active'||c.pending||c.mode==='online'||c.day!==day||c.slot!==slot||c.roomId===roomId) continue;
     const e=evaluate(r,c); if(!e.ok) continue;
     if(!c.roomId){ res.push({c,e,kind:'waiting'}); continue; }
     const cur=currentFit(c); const curScore=cur.ok?cur.score:0;
@@ -422,7 +428,7 @@ function freedCandidates(roomId,day,slot){
 }
 function freedCheck(roomId,day,slot,cause){
   const r=room(roomId);
-  if(['maintenance','closed'].includes(roomState(r))||occupant(roomId,day,slot)) return;
+  if(['maintenance','closed'].includes(roomState(r))) return;
   if(S.notifications.some(n=>n.open&&n.type==='freed'&&n.roomId===roomId&&n.day===day&&n.slot===slot)) return;
   if(!freedCandidates(roomId,day,slot).length){
     if(cause.loud) S.notifications.unshift({id:nid('n'),type:'info',open:true,at:stamp(),title:`${r.name} فضيت ${DAYS[day]} ${SLOTS[slot]}`,text:`${cause.text}. مفيش مواد في نفس الموعد محتاجاها دلوقتي.`});
@@ -469,9 +475,10 @@ function dateLabel(s){ const i=dayIdx(s), d=parseD(s); return `${i<6?DAYS[i]:'ا
 function nextDateFor(dayI){ let d=addDays(S.today,1); while(dayIdx(d)!==dayI) d=addDays(d,1); return d; }
 /* Every session actually happening on a date+slot: weekly ones not moved away, plus ones moved in. */
 function sessionsOn(date,slot){
-  const di=dayIdx(date), out=[];
+  const di=dayIdx(date), out=[]; const wn=Math.floor(daysBetween(S.term.start,date)/7)+1;
   for(const c of S.classes){
     if(c.status!=='active'||c.day!==di||c.slot!==slot) continue;
+    if(wn<wk(c)[0]||wn>wk(c)[1]) continue;
     if(S.oneoffs.some(o=>o.classId===c.id&&o.date===date)) continue;
     out.push({c,roomId:c.mode==='online'?null:c.roomId,shifted:false});
   }
@@ -539,15 +546,34 @@ const store={
 };
 const refOf=c=>c.exceptional?null:`${course(c.courseId).code}-${c.kind}-${c.group}`;
 function ensurePerson(p){ if(p&&!person(p.id)) S.people.push({id:p.id,name:p.name,role:p.role||(p.id.startsWith('m')?'ta':'doctor')}); }
+function ensureCohort(c){ if(!c) return; const x=cohort(c.id); if(x){ if(c.type) x.type=c.type; } else S.cohorts.push({id:c.id,name:c.name,type:c.type||'undergrad'}); }
+/* System proposal for a new session: a time the lecturer and the cohort are free for all its weeks, and the best room then. */
+function proposeSlot(c){
+  let best=null;
+  for(let d=0;d<DAYS.length;d++) for(let sl=0;sl<SLOTS.length;sl++){
+    const t={...c,day:d,slot:sl};
+    const busy=S.classes.some(o=>o.id!==c.id&&o.status==='active'&&o.day===d&&o.slot===sl&&overlapW(o,c)&&((c.instructor&&o.instructor===c.instructor)||(c.cohort&&o.cohort===c.cohort&&(c.group==='all'||o.group==='all'||c.group===o.group))));
+    if(busy) continue;
+    let r=null, score=70;
+    if(c.mode!=='online'){ const top=S.rooms.map(x=>({x,e:evaluate(x,t)})).filter(y=>y.e.ok).sort((a,b)=>b.e.score-a.e.score)[0]; if(!top) continue; r=top.x; score=top.e.score; }
+    const sameDay=S.classes.filter(o=>o.id!==c.id&&o.status==='active'&&o.cohort===c.cohort&&o.day===d&&overlapW(o,c)).length;
+    let rank=score+(sameDay>0&&sameDay<3?6:0)-(sameDay>=3?10:0)-d*0.5-sl*0.2;
+    if(isMasterCohort(c.cohort)) rank+=sl===3?12:-4; // الماجستير بيفضّل الفترة المسائية
+    if(!best||rank>best.rank) best={d,sl,r,rank};
+  }
+  if(best){ c.day=best.d; c.slot=best.sl; c.roomId=best.r?best.r.id:null; }
+  return best;
+}
 function applyOffering(oid,p){
   const first=!(oid in S.cmSeen); const prevRefs=S.cmRefs[oid]||[];
-  const lines=[], newIds=[], affected=[];
+  const lines=[], newIds=[], affected=[], reqIds=[];
   if(p.cancelled){
     const gone=S.classes.filter(c=>c.status==='active'&&c.cmOffering===oid);
     for(const c of gone){ c.status='cancelled'; notifyPeople(c,`${label(c)} اتلغت من Course Management`); releaseRoom(c,`${label(c)} اتلغى طرحها`); }
     if(gone.length) S.notifications.unshift({id:nid('n'),type:'cm',open:true,at:stamp(),title:`اتلغى طرح ${course(gone[0].courseId).name}`,lines:[`${gone.length} حصة اتلغت والأماكن اتعرضت على المواد المحتاجة.`],classIds:[]});
     S.cmRefs[oid]=[]; return;
   }
+  ensureCohort(p.cohort);
   let co=course(p.course.id);
   if(!co){ co={id:p.course.id,code:p.course.code,name:p.course.name,dept:p.course.department,cohort:p.cohort.id,students:0,reqs:{}}; S.courses.push(co); lines.push('مادة جديدة على نظام القاعات'); }
   Object.assign(co,{code:p.course.code,name:p.course.name,dept:p.course.department,cohort:p.cohort.id,managed:true});
@@ -560,10 +586,11 @@ function applyOffering(oid,p){
     const c=S.classes.find(x=>x.status==='active'&&!x.exceptional&&x.courseId===co.id&&x.kind===s.kind&&x.group===s.group);
     const ins=s.instructor?s.instructor.id:null;
     if(!c){
-      const n={id:nid('k'),courseId:co.id,kind:s.kind,group:s.group,instructor:ins,students:s.students,day:null,slot:null,roomId:null,mode:s.deliveryMode,status:'active',overrides:{},exceptional:false,cohort:p.cohort.id,cmOffering:oid};
-      S.classes.push(n); newIds.push(n.id); continue;
+      const n={id:nid('k'),courseId:co.id,kind:s.kind,group:s.group,instructor:ins,students:s.students,day:null,slot:null,roomId:null,mode:s.deliveryMode,status:'active',overrides:{},exceptional:false,cohort:p.cohort.id,cmOffering:oid,pending:true,weeks:[s.fromWeek||1,s.toWeek||S.term.weeks],total:s.totalSessions||null};
+      S.classes.push(n); proposeSlot(n); reqIds.push(n.id); continue;
     }
     c.cmOffering=oid;
+    if(s.fromWeek){ const w=[s.fromWeek,s.toWeek]; if(JSON.stringify(wk(c))!==JSON.stringify(w)){ if(!first) lines.push(`${shortLabel(c)}: المدة ${weeksText(c)} ← أسبوع ${w[0]}–${w[1]}`); c.weeks=w; } c.total=s.totalSessions; }
     if(c.students!==s.students){ if(!first) lines.push(`${shortLabel(c)}: الطلاب ${c.students} ← ${s.students}`); c.students=s.students; }
     if(c.instructor!==ins){ if(!first) lines.push(`${shortLabel(c)}: المحاضر ${c.instructor?person(c.instructor).name:'—'} ← ${s.instructor?s.instructor.name:'—'}`); c.instructor=ins; }
     if(c.mode!==s.deliveryMode){
@@ -580,8 +607,13 @@ function applyOffering(oid,p){
   }
   S.cmRefs[oid]=refs;
   if(affected.length) lines.push(`${affected.length} حصة مكانها مبقاش مناسب بعد التحديث`);
+  if(reqIds.length){
+    const ok=reqIds.filter(id=>{ const c=cls(id); return c.day!=null&&(c.mode==='online'||c.roomId); }).length;
+    S.requests.unshift({id:nid('q'),type:'cm',fromLabel:'Course Management',date:stamp(),status:'new',courseId:co.id,offering:oid,classIds:reqIds,text:`${reqIds.length} حصة جديدة محتاجة موعد ومكان. `+(ok===reqIds.length?'النظام اقترح موعد ومكان لكل الحصص. راجع واعتمد أو غيّر.':ok?`النظام اقترح لـ ${ok} منهم، والباقي (${reqIds.length-ok}) مالقاش لهم موعد ومكان مناسبين، فمحتاجين تختار لهم بنفسك.`:'النظام مالقاش موعد ومكان مناسبين لأي حصة منهم. افتح كل حصة وشوف أسباب استبعاد الأماكن.')});
+    lines.push(`${reqIds.length} حصة جديدة: اتعمل طلب توزيع باقتراح من النظام في صفحة الطلبات`);
+  }
   if(lines.length||newIds.length){
-    if(newIds.length) lines.push(`${newIds.length} حصة محتاجة ${cls(newIds[0]).day==null?'موعد ومكان':'مكان'}`);
+    if(newIds.length) lines.push(`${newIds.length} حصة رجعت حضوري ومحتاجة مكان`);
     S.notifications.unshift({id:nid('n'),type:'cm',open:true,at:stamp(),title:`${co.code} · ${co.name}`,lines,classIds:[...newIds,...affected.map(c=>c.id)]});
     log('تحديث من Course Management',`${co.code} ${co.name}: ${lines.join(' · ')}`);
   }
@@ -601,7 +633,7 @@ function roomsStatus(){
   for(const c of S.classes){
     if(c.exceptional||!c.cmOffering) continue;
     const st=classStatus(c); const r=c.roomId?room(c.roomId):null;
-    out[refOf(c)]={state:{ok:'scheduled',waiting:'waiting',issue:'issue',online:'online',cancelled:'cancelled',unscheduled:'unscheduled'}[st],label:CLS_STATUS[st][0],when:c.day==null?null:when(c),room:r?r.name:null,building:r?building(r.building).name:null};
+    out[refOf(c)]=c.rejected?{state:'rejected',label:'طلب التوزيع اترفض: '+c.rejected,when:null,room:null,building:null}:{state:{ok:'scheduled',waiting:'waiting',issue:'issue',online:'online',cancelled:'cancelled',unscheduled:'unscheduled',pending:'pending'}[st],label:st==='pending'?'مقترح، مستني اعتماد موظف التوزيع':CLS_STATUS[st][0],when:c.day==null?null:when(c),room:r?r.name:null,building:r?building(r.building).name:null};
   }
   return out;
 }
@@ -673,7 +705,7 @@ function renderRail(){
   const badges={dashboard:openN,requests:newReq};
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${S.term.name} · موظف التوزيع</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بـ Course Management</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">Course Management مش متصل</span><span>افتح <a href="course-management/">إدارة المواد</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 16:00</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بـ Course Management</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">Course Management مش متصل</span><span>افتح <a href="course-management/">إدارة المواد</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 17:00</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -740,7 +772,8 @@ function viewRequests(){
   <div class="stack">${list.length?list.map(reqCard).join(''):'<div class="empty">مفيش طلبات جديدة.</div>'}</div>`;
 }
 function reqCard(q){
-  const from=person(q.from); let details='', approve='اعتماد';
+  const fromName=q.fromLabel||person(q.from).name; let details='', approve='اعتماد';
+  if(q.type==='cm'){ const co=course(q.courseId); const cs=q.classIds.map(cls).filter(Boolean); details=`${co.code} · ${co.name} · ${cs[0]?esc(cohort(cs[0].cohort).name):''} — ${cs.length} حصة · ${cs[0]?weeksText(cs[0]):''}`; approve='اعتماد التوزيع'; }
   if(q.type==='shift'){ details=`${dateLabel(q.targetDate)} · ${q.classIds.length===personSessionsOn(q.from,q.targetDate).length+q.classIds.filter(id=>oneoffFor(id,q.targetDate)).length?'اليوم كله':'جزء من اليوم'}: ${q.classIds.map(id=>shortLabel(cls(id))+' '+SLOTS[cls(id).slot]).join('، ')}`; approve='مراجعة واختيار المواعيد'; }
   if(q.type==='online'){ const c=cls(q.classId); details=`${label(c)} · ${when(c)} · حالياً في ${c.roomId?room(c.roomId).name:'—'} · المدة: باقي الترم`; approve='اعتماد التحويل وتحرير المكان'; }
   if(q.type==='cancel_once'){ const c=cls(q.classId); details=`${label(c)} · ${q.when} · ${c.roomId?room(c.roomId).name:'—'}`; approve='اعتماد الإلغاء'; }
@@ -750,9 +783,13 @@ function reqCard(q){
   const st=q.status==='new'?pill('جديد','acc'):q.status==='approved'?pill('معتمد','ok'):pill('مرفوض','bad');
   const late=q.type==='shift'&&q.status==='new'&&daysBetween(S.today,q.targetDate)<S.settings.minNotice;
   const prefTxt=q.type==='shift'&&q.preferred?`<div class="meta">الموعد اللي الدكتور مفضله: ${dateLabel(q.preferred.date)} ${SLOTS[q.preferred.slot]}</div>`:'';
-  return `<div class="card ${q.status==='new'?'stripe-acc':'stripe-off'}"><div class="card-head"><div><span class="pill plain acc">${REQ_TYPE[q.type]}</span> ${st}<h4 style="margin-top:6px">${esc(details)}</h4><div class="meta">من ${esc(from.name)} · ${esc(q.date)}</div>${prefTxt}${late?`<div class="meta" style="color:var(--warn)">الطلب جه قبل الموعد بأقل من ${S.settings.minNotice} يوم</div>`:''}</div>
+  return `<div class="card ${q.status==='new'?'stripe-acc':'stripe-off'}"><div class="card-head"><div><span class="pill plain acc">${REQ_TYPE[q.type]}</span> ${st}<h4 style="margin-top:6px">${esc(details)}</h4><div class="meta">من ${esc(fromName)} · ${esc(q.date)}</div>${prefTxt}${late?`<div class="meta" style="color:var(--warn)">الطلب جه قبل الموعد بأقل من ${S.settings.minNotice} يوم</div>`:''}</div>
   ${q.status==='new'?`<div class="row-actions"><button class="btn sm primary" data-act="${q.type==='shift'?'openShift':'approve'}" data-id="${q.id}">${approve}</button><button class="btn sm danger" data-act="reject" data-id="${q.id}">رفض</button></div>`:''}</div>
-  <p style="margin:8px 0 0">${esc(q.text)}</p>${q.reason?`<p class="meta" style="margin:4px 0 0">سبب الرفض: ${esc(q.reason)}</p>`:''}</div>`;
+  <p style="margin:8px 0 0">${esc(q.text)}</p>${q.reason?`<p class="meta" style="margin:4px 0 0">سبب الرفض: ${esc(q.reason)}</p>`:''}
+  ${q.type==='cm'?`<div style="margin-top:6px">${q.classIds.map(cls).filter(Boolean).map(c=>{ const f=c.roomId?currentFit(c):null;
+    return `<div class="cand"><div><b>${esc(label(c))}</b> <span class="meta">${c.students} طالب · ${c.instructor?esc(person(c.instructor).name):'—'} · ${weeksText(c)}</span>
+    <div class="meta">${c.status==='cancelled'?'اترفض':c.day==null?'<span style="color:var(--bad)">النظام مالقاش موعد ومكان مناسبين للمدة دي</span>':`${c.pending?'مقترح':'معتمد'}: <b>${when(c)}</b>${c.mode==='online'?' · أونلاين':c.roomId?` · <b>${esc(room(c.roomId).name)}</b> ${scoreHtml(f.score)}`:' · <span style="color:var(--bad)">مفيش مكان</span>'}`}</div></div>
+    ${q.status==='new'?`<button class="btn sm" data-act="openClass" data-id="${c.id}">مراجعة / تغيير</button>`:''}</div>`; }).join('')}</div>`:''}</div>`;
 }
 
 function viewSchedule(){
@@ -764,7 +801,8 @@ function viewSchedule(){
   const cell=(d,s)=>list.filter(c=>c.day===d&&c.slot===s).map(c=>{
     const st=classStatus(c); const k=c.exceptional&&st==='ok'?'exc':st;
     const where=c.mode==='online'?'أونلاين':c.roomId?room(c.roomId).name:'بدون مكان';
-    return `<button class="chip-cls st-${k}" data-act="openClass" data-id="${c.id}"><b>${esc(shortLabel(c))}</b><span>${esc(where)} · ${c.students}</span></button>`;}).join('');
+    const w=wk(c); const part=w[0]!==1||w[1]!==S.term.weeks;
+    return `<button class="chip-cls st-${k}" data-act="openClass" data-id="${c.id}"><b>${esc(shortLabel(c))}</b><span>${esc(where)} · ${c.students}${part?` · أ${w[0]}–${w[1]}`:''}${c.pending?' · مقترح':''}</span></button>`;}).join('');
   return `<div class="page-head"><div><h2>الجدول الأسبوعي</h2><p>دوس على أي مادة عشان تشوف تفاصيلها واقتراحات الأماكن.</p></div></div>
   <div class="filters">
     <select data-chg="filter" data-k="building" aria-label="المبنى"><option value="">كل المباني</option>${S.buildings.map(b=>`<option value="${b.id}"${f.building===b.id?' selected':''}>${esc(b.name)}</option>`).join('')}</select>
@@ -806,7 +844,7 @@ function viewCalendar(){
   const cell=(date,s)=>{
     const live=sessionsOn(date,s).filter(x=>match(x.c)&&inB(x.roomId)).map(x=>{
       stats.live++; if(x.shifted) stats.shifted++;
-      const st=x.shifted?'shift':x.c.mode==='online'?'online':!x.roomId?'waiting':x.c.exceptional?'exc':'ok';
+      const st=x.shifted?'shift':x.c.pending?'pending':x.c.mode==='online'?'online':!x.roomId?'waiting':x.c.exceptional?'exc':'ok';
       if(st==='waiting') stats.noroom++;
       const where=x.c.mode==='online'?'أونلاين':x.roomId?room(x.roomId).name:'بدون مكان';
       return `<button class="chip-cls st-${st}" data-act="openClass" data-id="${x.c.id}"><b>${esc(shortLabel(x.c))}</b><span>${esc(where)}${x.c.instructor?' · '+esc(person(x.c.instructor).name):''}${x.shifted?` · منقولة من ${dateLabel(x.o.date)}`:''}</span></button>`;
@@ -1004,12 +1042,14 @@ function drawerClass(c){
   return `<div class="drawer-head"><div><div class="meta">${c.exceptional?'حجز استثنائي':esc(co.code)}</div><h3 id="dr-t">${esc(label(c))}</h3><div style="margin-top:4px">${clsPill(c)}</div></div><button class="btn ghost" data-act="closeDrawer" aria-label="إغلاق">إغلاق</button></div>
   <div class="drawer-body" id="drawer-body">
     <dl class="kv">
-      <dt>الموعد</dt><dd>${c.day==null&&c.status==='active'?timePicker(c):when(c)}</dd>
+      <dt>الموعد</dt><dd>${c.day==null&&c.status==='active'?timePicker(c):c.pending?`<b>${when(c)}</b> <span class="meta">(مقترح)</span>${timePicker(c,'غيّر الموعد')}`:when(c)}</dd>
+      <dt>المدة</dt><dd>${weeksText(c)}</dd>
       ${c.exceptional?`<dt>الجهة</dt><dd>${esc(c.organizer)}</dd>`:`<dt>المحاضر</dt><dd>${esc(person(c.instructor).name)}</dd><dt>الفرقة</dt><dd>${esc(cohort(c.cohort).name)}${c.group!=='all'?' · مجموعة '+c.group:''}</dd>`}
       <dt>العدد</dt><dd class="num">${c.students} ← المطلوب ${needed(c)} مكان (زيادة ${S.settings.buffer}%)</dd>
       <dt>طريقة التدريس</dt><dd>${c.exceptional||c.status!=='active'?MODE[c.mode]:`<select data-chg="mode" data-id="${c.id}" aria-label="طريقة التدريس">${Object.entries(MODE).map(([k,t])=>`<option value="${k}"${c.mode===k?' selected':''}>${t}</option>`).join('')}</select>`}</dd>
       <dt>المكان الحالي</dt><dd>${c.mode==='online'?'أونلاين — مش محتاجة مكان':c.roomId?`${esc(room(c.roomId).name)} · ${fit.ok?scoreHtml(fit.score):'<span style="color:var(--bad)">غير مناسب</span>'}`:'<span style="color:var(--bad)">بدون مكان</span>'}</dd>
     </dl>
+    ${c.pending?`<div class="infobox">ده توزيع مقترح من النظام لطلب جاي من Course Management. تقدر تغيّر الموعد أو المكان هنا، والاعتماد من صفحة الطلبات.</div>`:''}
     ${conf.length?`<div class="badbox"><b>تعارضات:</b><br>${conf.map(esc).join('<br>')}</div>`:''}
     ${c.displaced&&!c.roomId?`<div class="warnbox">اتشالت من ${esc(c.displaced)} بسبب تغيير حالة المكان.</div>`:''}
     <section><div class="sec-title">المتطلبات</div><div class="card">${reqs.length?reqs.map(q=>`<div class="req"><span>${EQ[q.eq]} ${q.mandatory?pill('إلزامي','bad'):pill('اختياري','off')}</span>
@@ -1023,17 +1063,17 @@ function drawerClass(c){
   </div>`;
 }
 /* Only times where the lecturer and the cohort/group are free; each option says how many suitable rooms are free then. */
-function timePicker(c){
+function timePicker(c,ph){
   const opts=[];
   for(let d=0;d<DAYS.length;d++) for(let sl=0;sl<SLOTS.length;sl++){
     const t={...c,day:d,slot:sl};
-    const busy=S.classes.some(o=>o.id!==c.id&&o.status==='active'&&o.day===d&&o.slot===sl&&((c.instructor&&o.instructor===c.instructor)||(c.cohort&&o.cohort===c.cohort&&(c.group==='all'||o.group==='all'||c.group===o.group))));
+    const busy=S.classes.some(o=>o.id!==c.id&&o.status==='active'&&o.day===d&&o.slot===sl&&overlapW(o,c)&&((c.instructor&&o.instructor===c.instructor)||(c.cohort&&o.cohort===c.cohort&&(c.group==='all'||o.group==='all'||c.group===o.group))));
     if(busy) continue;
     const n=c.mode==='online'?null:S.rooms.filter(r=>evaluate(r,t).ok).length;
     opts.push([`${d}-${sl}`,`${DAYS[d]} ${SLOTS[sl]}${n==null?'':` · ${n?n+' مكان مناسب':'مفيش مكان'}`}`,n]);
   }
   opts.sort((a,b)=>(b[2]??99)-(a[2]??99));
-  return `<select data-chg="setTime" data-id="${c.id}" aria-label="اختار الموعد"><option value="">— اختار يوم وفترة —</option>${opts.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select><div class="hint">المعروض بس المواعيد اللي المحاضر والفرقة فاضيين فيها.</div>`;
+  return `<select data-chg="setTime" data-id="${c.id}" aria-label="اختار الموعد"><option value="">— ${ph||'اختار يوم وفترة'} —</option>${opts.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select><div class="hint">المعروض بس المواعيد اللي المحاضر والفرقة فاضيين فيها.</div>`;
 }
 function drawerRoom(r){
   const list=S.classes.filter(c=>c.status==='active'&&c.roomId===r.id);
@@ -1109,6 +1149,14 @@ const ACT={
   unoverride(d){ const c=cls(d.id); const o={...c.overrides}; delete o[d.eq]; c.overrides=o; log('رجوع إلزام',`${label(c)}: ${EQ[d.eq]}`); },
   async approve(d){
     const q=find(S.requests,d.id);
+    if(q.type==='cm'){
+      const cs=q.classIds.map(cls).filter(c=>c&&c.status==='active');
+      const missing=cs.filter(c=>c.day==null||(c.mode!=='online'&&!c.roomId));
+      if(missing.length){ toast(`${missing.length} حصة لسه ملهاش موعد أو مكان. دوس "مراجعة / تغيير" عليها.`); return; }
+      cs.forEach(c=>{ c.pending=false; notifyPeople(c,`${label(c)}: ${when(c)}${c.roomId?' في '+room(c.roomId).name:''} · ${weeksText(c)}`); });
+      q.status='approved'; log('اعتماد توزيع',`${course(q.courseId).code} ${course(q.courseId).name}: ${cs.map(c=>`${shortLabel(c)} ← ${when(c)}${c.roomId?' '+room(c.roomId).name:''}`).join('، ')}`);
+      toast('اتعتمد التوزيع واتبعت لـ Course Management'); return;
+    }
     if(q.type==='online'){
       const c=cls(q.classId); c.mode='online'; q.status='approved';
       log('اعتماد طلب',`تحويل ${label(c)} أونلاين للترم`,q.text); notifyPeople(c,`${label(c)} بقت أونلاين`);
@@ -1171,7 +1219,8 @@ const ACT={
   async reject(d){
     const q=find(S.requests,d.id);
     const v=await ask({title:'رفض الطلب',fields:[{id:'reason',label:'سبب الرفض',type:'textarea',required:true}],ok:'رفض',danger:true});
-    if(!v) return; q.status='rejected'; q.reason=v.reason; S.oneoffs=S.oneoffs.filter(o=>o.requestId!==q.id); log('رفض طلب',`${REQ_TYPE[q.type]} من ${person(q.from).name}`,v.reason); render();
+    if(!v) return; q.status='rejected'; q.reason=v.reason; S.oneoffs=S.oneoffs.filter(o=>o.requestId!==q.id);
+    if(q.type==='cm') q.classIds.map(cls).filter(c=>c&&c.pending).forEach(c=>{ c.status='cancelled'; c.pending=false; c.roomId=null; c.rejected=v.reason; }); log('رفض طلب',`${REQ_TYPE[q.type]} من ${q.fromLabel||person(q.from).name}`,v.reason); render();
   },
   async roomStatus(d){
     const r=room(d.id);
@@ -1327,7 +1376,7 @@ const CHG={
   setNum(t){ S.settings[t.dataset.k]=Math.max(0,Number(t.value)||0); log('إعدادات',`${t.dataset.k==='shiftWindow'?'مهلة الموعد البديل':'أقل مدة للطلب'} ← ${S.settings[t.dataset.k]} يوم`); },
   setTime(t){
     if(!t.value) return; const c=cls(t.dataset.id); const [d,sl]=t.value.split('-').map(Number);
-    c.day=d; c.slot=sl; log('تحديد موعد',`${label(c)} ← ${when(c)}`);
+    c.day=d; c.slot=sl; if(c.roomId){ c.roomId=null; } log('تحديد موعد',`${label(c)} ← ${when(c)}`);
     if(c.mode==='online') notifyPeople(c,`${label(c)}: الموعد ${when(c)} (أونلاين)`); else toast('اتحدد الموعد. اختار المكان من الاقتراحات.');
   },
   reqReason(t){ const q=course(t.dataset.co).reqs[t.dataset.k][t.dataset.i]; q.reason=t.value; },
