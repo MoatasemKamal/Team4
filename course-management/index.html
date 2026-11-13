@@ -46,6 +46,10 @@ h1,h2,h3,h4,h5{font-family:var(--font-display);margin:0;text-wrap:balance;line-h
 .nav:hover{background:var(--surface-2)}
 .nav.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .badge{min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--warn);color:#fff;font-size:12px;display:inline-grid;place-items:center;font-variant-numeric:tabular-nums}
+.nav-group{font-size:11.5px;font-weight:600;color:var(--muted);padding:14px 12px 4px;letter-spacing:.2px}
+.nav-group:first-of-type{padding-top:2px}
+.nav.ext{color:var(--muted);font-size:13.5px;border:1px dashed var(--line);margin-top:10px}
+.nav.ext:hover{color:var(--accent);border-color:var(--accent)}
 .rail-foot{margin-top:auto;font-size:12.5px;color:var(--muted);padding:10px;display:flex;flex-direction:column;gap:8px}
 main{flex:1;min-width:0;padding:24px 28px 60px}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
@@ -146,7 +150,8 @@ html.modal-open,html.modal-open body{overflow:hidden}
 @media (max-width:760px){
   .app{flex-direction:column}
   .rail{position:static;height:auto;width:auto;flex-direction:row;overflow-x:auto;border-inline-end:0;border-bottom:1px solid var(--line);padding:8px}
-  .brand,.rail-foot{display:none}
+  .brand,.rail-foot,.nav-group{display:none}
+  .nav.ext{margin-top:0}
   .nav{white-space:nowrap}
   main{padding:16px}
 }
@@ -170,8 +175,14 @@ const PTYPE={bachelor:'بكالوريوس (فرق)',credit:'ساعات معتم�
 const ORD=['الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة'];
 /* Same equipment keys as the rooms system; the rooms system owns this list and sends updates. */
 let EQ={projector:'بروجكتور',mic:'مايك وسماعات',ac:'تكييف',internet:'إنترنت',smartboard:'سبورة ذكية',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',excel:'Microsoft Excel',spss:'SPSS',accsoft:'برنامج محاسبي (ERP)'};
-const NAV=[['offer','المواد حسب البرنامج والفرقة'],['catalog','تفاصيل المواد'],['plans','الخطط الدراسية'],['master','البيانات الأساسية'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
-const VERSION='النسخة: 14 نوفمبر 19:00';
+/* Menu grouped by workflow: this term's work first, then the bylaw (plans and courses), then setup. */
+const NAV_GROUPS=[
+  {t:'الترم الحالي',items:[['offer','المواد حسب البرنامج والفرقة'],['outbox','الإرسال لنظام القاعات'],['load','أعباء التدريس']]},
+  {t:'اللائحة',items:[['plans','الخطط الدراسية'],['catalog','تفاصيل المواد']]},
+  {t:'الإعداد',items:[['master','البيانات الأساسية'],['settings','الإعدادات']]}
+];
+const NAV=NAV_GROUPS.flatMap(g=>g.items);
+const VERSION='النسخة: 14 نوفمبر 20:00';
 const PTYPE_ITEM={core:'إجبارية',elective:'اختيارية'};
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
@@ -541,8 +552,9 @@ function ask(o){
 function renderRail(){
   const pending=S.offerings.filter(o=>o.offered&&sendState(o)[1]!=='ok').length;
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة المواد الدراسية</h1><small>${esc(S.university)} · ${esc(S.faculty.name)} · ${esc(S.term.name)}</small></div>`+
-    NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${k==='outbox'&&pending?`<span class="badge">${pending}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">${VERSION}</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<nav aria-label="القائمة" style="display:contents">`+NAV_GROUPS.map(g=>`<div class="nav-group" role="presentation">${g.t}</div>`+g.items.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${k==='outbox'&&pending?`<span class="badge">${pending}</span>`:''}</a>`).join('')).join('')+
+    `<a class="nav ext" href="../"><span>نظام القاعات والمعامل</span><span aria-hidden="true">↖</span></a></nav>`+
+    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح نظام القاعات من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">${VERSION}</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 function groupsSummary(o){
   const g=groupsOf(o), co=course(o.courseId);
