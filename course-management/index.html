@@ -163,7 +163,7 @@ html.modal-open,html.modal-open body{overflow:hidden}
 const KINDS={lecture:'محاضرة',section:'سكشن',lab:'معمل'};
 const MODE={inperson:'حضوري',online:'أونلاين',hybrid:'هجين'};
 /* Same equipment keys as the rooms system, so requirements travel between the two unchanged. */
-const EQ={projector:'بروجكتور',internet:'إنترنت',smartboard:'سبورة ذكية',ac:'تكييف',mic:'مايك وسماعات',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',oracle:'Oracle',matlab:'MATLAB',network:'معدات شبكات'};
+let EQ={projector:'بروجكتور',internet:'إنترنت',smartboard:'سبورة ذكية',ac:'تكييف',mic:'مايك وسماعات',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',oracle:'Oracle',matlab:'MATLAB',network:'معدات شبكات'};
 const NAV=[['cohorts','المواد حسب الفرقة'],['catalog','كتالوج المواد'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
 
 /* ============ Seed data (sample) ============ */
@@ -326,6 +326,9 @@ const store={
   del(k){ try{ localStorage.removeItem(k); }catch(e){} }
 };
 let ROOMS=store.get(BUS_ROOMS);
+/* The equipment list is master data owned by the rooms system; adopt its names and new items. */
+function adoptMaster(){ if(ROOMS&&ROOMS.master&&ROOMS.master.equipment) EQ={...EQ,...ROOMS.master.equipment}; }
+adoptMaster();
 function busPayload(){
   const offerings={};
   for(const o of S.offerings){
@@ -356,7 +359,7 @@ function allocCell(o){
   if(!a.known) return '<span class="meta">لسه ماوصلش</span>';
   return a.need?pill(`${a.done} / ${a.need} اتوزعت`,a.done===a.need?'ok':a.done?'warn':'bad'):pill('أونلاين','off');
 }
-window.addEventListener('storage',e=>{ if(e.key===BUS_ROOMS){ ROOMS=store.get(BUS_ROOMS); render(); } });
+window.addEventListener('storage',e=>{ if(e.key===BUS_ROOMS){ ROOMS=store.get(BUS_ROOMS); adoptMaster(); render(); } });
 
 /* ============ Dialog ============ */
 function fieldHtml(f){
@@ -395,7 +398,7 @@ function renderRail(){
   const pending=S.offerings.filter(o=>o.offered&&sendState(o)[1]!=='ok').length;
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة المواد الدراسية</h1><small>${S.term.name} · الأقسام وشئون الطلاب</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${k==='outbox'&&pending?`<span class="badge">${pending}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 15:30</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 16:00</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 
 function sessChips(o){

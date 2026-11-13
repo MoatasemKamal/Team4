@@ -206,12 +206,13 @@ html.modal-open,html.modal-open body{overflow:hidden}
 const DAYS=['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
 const SLOTS=['9–11','11–1','1–3','3–5'];
 const MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-const ROOMKIND={hall:'قاعة',amphi:'مدرج',lab:'معمل',sectionRoom:'غرفة سكاشن',meeting:'قاعة اجتماعات'};
-const EQ={projector:'بروجكتور',internet:'إنترنت',smartboard:'سبورة ذكية',ac:'تكييف',mic:'مايك وسماعات',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',oracle:'Oracle',matlab:'MATLAB',network:'معدات شبكات'};
+const DEF_ROOMKIND={hall:'قاعة',amphi:'مدرج',lab:'معمل',sectionRoom:'غرفة سكاشن',meeting:'قاعة اجتماعات'};
+const DEF_EQ={projector:'بروجكتور',internet:'إنترنت',smartboard:'سبورة ذكية',ac:'تكييف',mic:'مايك وسماعات',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',oracle:'Oracle',matlab:'MATLAB',network:'معدات شبكات'};
+let EQ=DEF_EQ, ROOMKIND=DEF_ROOMKIND; // bound to the master data in state (bindMaster)
 const MODE={inperson:'حضوري',online:'أونلاين',hybrid:'هجين'};
 const STATE_LABEL={available:['متاح','ok'],partial:['متاح جزئياً','warn'],maintenance:['صيانة','bad'],closed:['مقفول','off']};
 const REQ_TYPE={shift:'نقل محاضرات',online:'تحويل أونلاين',booking:'طلب حجز',maintenance:'بلاغ عطل',exceptional:'حجز استثنائي',cancel_once:'إلغاء مرة واحدة'};
-const NAV=[['dashboard','لوحة المتابعة'],['requests','الطلبات'],['schedule','الجدول الأسبوعي'],['calendar','التقويم'],['rooms','القاعات والمعامل'],['courses','المواد والمتطلبات'],['preferred','القاعات المفضلة'],['log','سجل التغييرات'],['settings','الإعدادات']];
+const NAV=[['dashboard','لوحة المتابعة'],['requests','الطلبات'],['schedule','الجدول الأسبوعي'],['calendar','التقويم'],['rooms','القاعات والمعامل'],['courses','المواد والمتطلبات'],['preferred','القاعات المفضلة'],['master','البيانات الأساسية'],['log','سجل التغييرات'],['settings','الإعدادات']];
 
 /* ============ Seed data (sample) ============ */
 function seed(){
@@ -608,8 +609,8 @@ let lastSaved='', lastStatus='';
 function persist(){
   const {ui,...rest}=S; const j=JSON.stringify(rest);
   if(j!==lastSaved){ lastSaved=j; store.set(SAVE_KEY,rest); }
-  const st=JSON.stringify(roomsStatus());
-  if(st!==lastStatus){ lastStatus=st; store.set(BUS_ROOMS,{at:stamp(),status:JSON.parse(st)}); }
+  const st=JSON.stringify([roomsStatus(),S.equipment]);
+  if(st!==lastStatus){ lastStatus=st; store.set(BUS_ROOMS,{at:stamp(),status:roomsStatus(),master:{equipment:S.equipment}}); }
 }
 window.addEventListener('storage',e=>{
   if(e.key===BUS_CM&&syncFromCM()){ render(); toast('وصل تحديث من Course Management'); }
@@ -672,7 +673,7 @@ function renderRail(){
   const badges={dashboard:openN,requests:newReq};
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${S.term.name} · موظف التوزيع</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بـ Course Management</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">Course Management مش متصل</span><span>افتح <a href="course-management/">إدارة المواد</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 15:30</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بـ Course Management</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">Course Management مش متصل</span><span>افتح <a href="course-management/">إدارة المواد</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 16:00</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -924,6 +925,60 @@ function viewLog(){
   </tbody></table></div>`;
 }
 
+/* ============ Master data (البيانات الأساسية) ============ */
+const CORE_USAGE=['lecture','section','lab'];
+const MASTER_TABS=[['equipment','الأدوات'],['usage','أنواع الاستخدام'],['kinds','أنواع الأماكن'],['buildings','المباني']];
+const MASTER_ONE={equipment:'أداة',usage:'نوع استخدام',kinds:'نوع مكان',buildings:'مبنى'};
+function bindMaster(){
+  if(!S.equipment) S.equipment={...DEF_EQ};
+  if(!S.roomKinds) S.roomKinds={...DEF_ROOMKIND};
+  EQ=S.equipment; ROOMKIND=S.roomKinds;
+}
+/* Where each item is used, so deletion can be blocked with a reason. */
+function masterUse(tab,key){
+  if(tab==='equipment'){
+    const rooms=S.rooms.filter(r=>r.equipment[key]).length;
+    const courses=S.courses.filter(c=>Object.values(c.reqs).some(l=>l.some(q=>q.eq===key))).length+S.classes.filter(c=>c.exceptional&&(c.reqs||[]).some(q=>q.eq===key)).length;
+    return {n:rooms+courses,text:[rooms?`${rooms} مكان`:'',courses?`${courses} مادة أو حجز`:''].filter(Boolean).join(' · ')};
+  }
+  if(tab==='usage'){
+    const rooms=S.rooms.filter(r=>r.caps[key]).length, cl=S.classes.filter(c=>c.status==='active'&&c.kind===key).length;
+    return {n:rooms+cl,text:[rooms?`${rooms} مكان`:'',cl?`${cl} حصة`:''].filter(Boolean).join(' · '),core:CORE_USAGE.includes(key)};
+  }
+  if(tab==='kinds'){ const n=S.rooms.filter(r=>r.kind===key).length; return {n,text:n?`${n} مكان`:''}; }
+  const n=S.rooms.filter(r=>r.building===key).length; return {n,text:n?`${n} مكان`:''};
+}
+function masterList(tab){
+  if(tab==='equipment') return Object.entries(S.equipment).map(([k,v])=>({key:k,name:v}));
+  if(tab==='usage') return Object.entries(S.usage).map(([k,v])=>({key:k,name:v}));
+  if(tab==='kinds') return Object.entries(S.roomKinds).map(([k,v])=>({key:k,name:v}));
+  return S.buildings.map(b=>({key:b.id,name:b.name}));
+}
+function masterSet(tab,key,name){
+  if(tab==='equipment') S.equipment[key]=name;
+  else if(tab==='usage') S.usage[key]=name;
+  else if(tab==='kinds') S.roomKinds[key]=name;
+  else { const b=building(key); if(b) b.name=name; else S.buildings.push({id:key,name}); }
+}
+function masterDel(tab,key){
+  if(tab==='equipment') delete S.equipment[key];
+  else if(tab==='usage') delete S.usage[key];
+  else if(tab==='kinds') delete S.roomKinds[key];
+  else S.buildings=S.buildings.filter(b=>b.id!==key);
+}
+function viewMaster(){
+  const tab=S.ui.masterTab||'equipment'; const label=MASTER_TABS.find(t=>t[0]===tab)[1];
+  const list=masterList(tab);
+  const notes={equipment:'الأدوات اللي بتتسجل في الأماكن وبتتطلب في المواد. القائمة دي بتتبعت لـ Course Management عشان المتطلبات تتكتب بنفس الأسماء.',usage:'الاستخدامات اللي ليها سعة من – إلى في كل مكان. المحاضرة والسكشن والمعمل أساسية لأنها جاية من Course Management.',kinds:'أنواع الأماكن اللي بتظهر في إضافة مكان والفلاتر.',buildings:'المباني اللي الأماكن تابعة لها.'};
+  return `<div class="page-head"><div><h2>البيانات الأساسية</h2><p>القوائم اللي باقي النظام بيختار منها. الحذف مسموح بس للي مش مستخدم.</p></div><button class="btn primary" data-act="masterAdd">إضافة ${MASTER_ONE[tab]}</button></div>
+  <div class="row-actions" role="group" aria-label="القوائم" style="margin-bottom:12px">${MASTER_TABS.map(([k,t])=>`<button class="btn sm ${k===tab?'primary':''}" data-act="masterTab" data-v="${k}" aria-pressed="${k===tab}">${t} <span class="num">(${masterList(k).length})</span></button>`).join('')}</div>
+  <p class="hint" style="margin-top:0">${notes[tab]}</p>
+  <div class="tbl-wrap"><table><thead><tr><th>الاسم</th><th>مستخدم في</th><th></th></tr></thead><tbody>
+  ${list.map(it=>{ const u=masterUse(tab,it.key); const block=u.core?'أساسي، جاي من Course Management':u.n?`مستخدم في ${u.text}`:'';
+    return `<tr><td><b>${esc(it.name)}</b>${u.core?` ${pill('أساسي','acc')}`:''}</td><td class="meta">${esc(u.text)||'مش مستخدم'}</td><td><div class="row-actions"><button class="btn sm" data-act="masterEdit" data-k="${esc(it.key)}">تعديل الاسم</button><button class="btn sm danger" data-act="masterDelete" data-k="${esc(it.key)}" ${block?`disabled title="${esc(block)}"`:''}>حذف</button></div></td></tr>`; }).join('')}
+  </tbody></table></div>`;
+}
+
 function viewSettings(){
   return `<div class="page-head"><div><h2>الإعدادات</h2><p>قيم عامة بتأثر على حساب الاقتراحات.</p></div></div>
   <div class="cols">
@@ -932,15 +987,11 @@ function viewSettings(){
       <p class="hint">مثال: 45 طالب مع ${S.settings.buffer}% يبقى المطلوب ${Math.ceil(45*(1+S.settings.buffer/100))} مكان.</p>
       <h3 style="margin-top:18px">نقل المحاضرات لمرة واحدة</h3>
       <div class="form-grid"><label>مهلة الموعد البديل (يوم)<input type="number" min="1" max="60" data-chg="setNum" data-k="shiftWindow" value="${S.settings.shiftWindow}"></label><label>أقل مدة قبل الموعد للطلب (يوم)<input type="number" min="0" max="14" data-chg="setNum" data-k="minNotice" value="${S.settings.minNotice}"></label></div>
-      <h3 style="margin-top:18px">أنواع الاستخدام</h3>
-      <div>${Object.values(S.usage).map(u=>`<span class="tag">${esc(u)}</span>`).join('')}</div>
-      <div class="row-actions" style="margin-top:8px"><button class="btn sm" data-act="addUsage">إضافة نوع استخدام</button></div>
+      <p class="hint" style="margin-top:18px">الأدوات وأنواع الاستخدام وأنواع الأماكن والمباني بقت في <a href="#master">البيانات الأساسية</a>.</p>
     </section>
     <section class="panel"><h3>الفترات وأيام الدراسة</h3>
       <div>${SLOTS.map(s=>`<span class="tag num">${s}</span>`).join('')}</div>
       <p class="hint">${DAYS.join('، ')}. (افتراض لحد ما شئون الطلاب تأكد، سؤال H1)</p>
-      <h3 style="margin-top:18px">المباني</h3>
-      <div>${S.buildings.map(b=>`<span class="tag">${esc(b.name)}</span>`).join('')}</div>
     </section>
   </div>`;
 }
@@ -1006,7 +1057,7 @@ function drawerRoom(r){
 function render(){
   renderRail();
   const v=S.ui.view;
-  const html={dashboard:viewDashboard,requests:viewRequests,schedule:viewSchedule,calendar:viewCalendar,rooms:viewRooms,courses:viewCourses,preferred:viewPreferred,log:viewLog,settings:viewSettings}[v]||viewDashboard;
+  const html={dashboard:viewDashboard,requests:viewRequests,schedule:viewSchedule,calendar:viewCalendar,rooms:viewRooms,courses:viewCourses,preferred:viewPreferred,master:viewMaster,log:viewLog,settings:viewSettings}[v]||viewDashboard;
   $('#main').innerHTML=html();
   const dr=S.ui.drawer; const root=$('#drawer-root');
   const prev=$('#drawer-body')?.scrollTop||0;
@@ -1024,7 +1075,7 @@ function syncHash(){ const h=location.hash.slice(1); S.ui.view=NAV.some(([k])=>k
 
 /* ============ Actions ============ */
 const ACT={
-  reset(){ store.del(SAVE_KEY); S=seed(); syncFromCM(); $('#drawer-root').dataset.key=''; S.ui.view=location.hash.slice(1)||'dashboard'; toast('رجعت البيانات التجريبية'); },
+  reset(){ store.del(SAVE_KEY); S=seed(); bindMaster(); syncFromCM(); $('#drawer-root').dataset.key=''; S.ui.view=location.hash.slice(1)||'dashboard'; toast('رجعت البيانات التجريبية'); },
   openClass(d){ S.ui.drawer={type:'class',id:d.id}; },
   openRoom(d){ S.ui.drawer={type:'room',id:d.id}; },
   closeDrawer(){ S.ui.drawer=null; $('#drawer-root').dataset.key=''; },
@@ -1216,7 +1267,7 @@ const ACT={
       lab:{lab:[Math.min(8,seats),seats],exam:[Math.min(8,seats),seats]},
       sectionRoom:{section:[Math.min(10,seats),seats],exam:[5,half]},
       meeting:{conference:[5,seats],defense:[5,seats],workshop:[5,seats]}
-    }[v.kind];
+    }[v.kind]||{};
     const equipment={}; for(const e of v.eq) equipment[e]='ok';
     const devN=Number(v.devices)||0;
     if(v.kind==='lab'&&devN) equipment.computers='ok';
@@ -1226,6 +1277,29 @@ const ACT={
     freedCheckRoomAll(r.id,`اتضاف مكان جديد: ${r.name}`);
     S.ui.drawer={type:'room',id:r.id};
     toast('اتضاف المكان. راجع السعات حسب الاستخدام، ولو فيه مواد مستنية مكان هيوصلك إشعار.');
+  },
+  masterTab(d){ S.ui.masterTab=d.v; },
+  async masterAdd(){
+    const tab=S.ui.masterTab||'equipment';
+    const v=await ask({title:'إضافة '+MASTER_ONE[tab],fields:[{id:'name',label:'الاسم',required:true}],ok:'إضافة'});
+    if(!v) return;
+    if(masterList(tab).some(x=>x.name===v.name)){ toast(`${v.name} موجود بالفعل`); return; }
+    const key={equipment:'e',usage:'u',kinds:'k',buildings:'b'}[tab]+(++S.seq);
+    masterSet(tab,key,v.name); log('بيانات أساسية',`إضافة ${MASTER_ONE[tab]}: ${v.name}`); render();
+    toast(tab==='equipment'?'اتضافت. سجّلها في الأماكن اللي فيها من تفاصيل المكان.':'اتضافت');
+  },
+  async masterEdit(d){
+    const tab=S.ui.masterTab||'equipment'; const it=masterList(tab).find(x=>x.key===d.k);
+    const v=await ask({title:'تعديل الاسم',fields:[{id:'name',label:'الاسم',required:true,value:it.name}],ok:'حفظ'});
+    if(!v||v.name===it.name) return;
+    if(masterList(tab).some(x=>x.name===v.name)){ toast(`${v.name} موجود بالفعل`); return; }
+    masterSet(tab,d.k,v.name); log('بيانات أساسية',`${it.name} ← ${v.name}`); render();
+  },
+  async masterDelete(d){
+    const tab=S.ui.masterTab||'equipment'; const it=masterList(tab).find(x=>x.key===d.k); const u=masterUse(tab,d.k);
+    if(u.n||u.core){ toast('مينفعش يتحذف وهو مستخدم'); return; }
+    const v=await ask({title:`حذف ${it.name}`,ok:'حذف',danger:true});
+    if(!v) return; masterDel(tab,d.k); log('بيانات أساسية',`حذف: ${it.name}`); render();
   },
   async addUsage(){
     const v=await ask({title:'نوع استخدام جديد',fields:[{id:'name',label:'الاسم',required:true}],ok:'إضافة'});
@@ -1289,7 +1363,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('input',e=>{ const t=e.target.closest('[data-inp]'); if(t&&S.ui.newShift) S.ui.newShift[t.dataset.k]=t.value; });
 document.addEventListener('change',e=>{ const t=e.target.closest('[data-chg]'); if(!t) return; CHG[t.dataset.chg](t); render(); });
 window.addEventListener('hashchange',syncHash);
-(function(){ const saved=store.get(SAVE_KEY); if(saved&&saved.rooms) S={...saved,ui:S.ui}; syncFromCM(); })();
+(function(){ const saved=store.get(SAVE_KEY); if(saved&&saved.rooms) S={...saved,ui:S.ui}; bindMaster(); syncFromCM(); })();
 syncHash();
 </script>
 </body>
