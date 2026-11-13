@@ -157,6 +157,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13.5px}
 .dialog label{display:flex;flex-direction:column;gap:4px;font-size:13.5px;color:var(--muted)}
 .dialog label>*{color:var(--ink)}
 .dlg-err{color:var(--bad);margin:0;font-size:13.5px}
+.dialog [hidden]{display:none !important}
 .dlg-actions{display:flex;justify-content:flex-start;gap:8px;flex-direction:row-reverse}
 .toast{position:fixed;bottom:20px;right:50%;transform:translateX(50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;z-index:50;box-shadow:var(--shadow);font-weight:500;max-width:90vw}
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end}
@@ -616,7 +617,7 @@ function fieldHtml(f){
   if(f.type==='textarea') ctl=`<textarea id="${id}">${v}</textarea>`;
   else if(f.type==='select') ctl=`<select id="${id}">${f.options.map(([k,t])=>`<option value="${esc(k)}"${String(k)===String(f.value??'')?' selected':''}>${esc(t)}</option>`).join('')}</select>`;
   else ctl=`<input id="${id}" type="${f.type||'text'}" value="${v}">`;
-  return `<label for="${id}">${esc(f.label)}${f.required?' *':''}${ctl}</label>`;
+  return `<label for="${id}"${f.showIf?` data-show-field="${f.showIf[0]}" data-show-value="${esc(f.showIf[1])}" hidden`:''}>${esc(f.label)}${f.required?' *':''}${ctl}</label>`;
 }
 function ask(o){
   return new Promise(res=>{
@@ -624,6 +625,10 @@ function ask(o){
     ov.innerHTML=`<form class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t"><h3 id="dlg-t">${esc(o.title)}</h3>${o.body?`<div>${o.body}</div>`:''}${(o.fields||[]).map(fieldHtml).join('')}<p class="dlg-err" hidden></p><div class="dlg-actions"><button class="btn ${o.danger?'danger':'primary'}" type="submit">${esc(o.ok||'تأكيد')}</button><button type="button" class="btn ghost" data-x>رجوع</button></div></form>`;
     document.body.append(ov);
     const form=ov.querySelector('form');
+    /* Fields shown only for one value of another field (e.g. the new building's name). */
+    const syncShow=()=>form.querySelectorAll('[data-show-field]').forEach(l=>{ const src=form.querySelector('#f-'+l.dataset.showField); l.hidden=!src||src.value!==l.dataset.showValue; });
+    form.addEventListener('change',e=>{ if(e.target.id&&form.querySelector(`[data-show-field="${e.target.id.slice(2)}"]`)){ syncShow(); const shown=form.querySelector(`[data-show-field="${e.target.id.slice(2)}"]:not([hidden]) input`); if(shown) shown.focus(); } });
+    syncShow();
     (form.querySelector('input,textarea,select')||form.querySelector('[type=submit]')).focus();
     const close=v=>{ ov.remove(); res(v); };
     ov.querySelector('[data-x]').onclick=()=>close(null);
@@ -632,7 +637,7 @@ function ask(o){
       e.preventDefault(); const vals={};
       for(const f of o.fields||[]){
         if(f.type==='checks'){ vals[f.id]=[...form.querySelectorAll(`[name="f-${f.id}"]:checked`)].map(x=>x.value); continue; }
-        const el=form.querySelector('#f-'+f.id); vals[f.id]=el.value.trim();
+        const el=form.querySelector('#f-'+f.id); if(el.closest('[hidden]')){ vals[f.id]=''; continue; } vals[f.id]=el.value.trim();
         if(f.required&&!vals[f.id]){ const er=form.querySelector('.dlg-err'); er.hidden=false; er.textContent=`اكتب ${f.label} عشان تكمل`; el.focus(); return; }
       }
       close(vals);
@@ -1184,7 +1189,7 @@ const ACT={
       {id:'name',label:'الاسم',required:true,value:''},
       {id:'kind',label:'النوع',type:'select',value:'hall',options:Object.entries(ROOMKIND)},
       {id:'building',label:'المبنى',type:'select',value:S.buildings[0].id,options:[...S.buildings.map(b=>[b.id,b.name]),['__new','مبنى جديد…']]},
-      {id:'newBuilding',label:'اسم المبنى الجديد (لو اخترت مبنى جديد)',value:''},
+      {id:'newBuilding',label:'اسم المبنى الجديد',required:true,value:'',showIf:['building','__new']},
       {id:'floor',label:'الدور',required:true,value:'الأول'},
       {id:'seats',label:'أقصى عدد طلاب',type:'number',required:true,value:'40'},
       {id:'devices',label:'عدد الأجهزة (للمعامل)',type:'number',value:''},
