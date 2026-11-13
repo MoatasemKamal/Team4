@@ -259,11 +259,14 @@ function seed(){
       C('k8','co3','lab','G1','m2',20,3,1,'r10'),
       C('k9','co3','lab','G2','m2',20,3,2,'r10'),
       C('k10','co4','lecture','all','d1',105,2,2,'r12'),
-      C('k11','co4','lab','G1','m2',22,4,0,'r8'),
-      C('k12','co4','lab','G2','m2',22,4,1,'r8'),
-      C('k13','co5','lab','G1','m1',24,5,0,null),
+      C('k11','co4','lab','G1','m2',27,4,0,'r8'),
+      C('k12','co4','lab','G2','m2',26,4,1,'r8'),
+      C('k17','co4','lab','G3','m2',26,4,2,'r8'),
+      C('k18','co4','lab','G4','m2',26,4,3,'r8'),
+      C('k13','co5','lab','G1','m1',25,5,0,null),
       C('k14','co6','lecture','all','d5',200,0,1,null,'online'),
-      C('k15','co2','section','G1','m2',25,0,2,'r7'),
+      C('k15','co2','section','G1','m2',22,0,2,'r7'),
+      C('k19','co2','section','G2','m2',22,0,3,'r7'),
       C('k16','co7','lecture','all','d2',38,1,1,'r1')
     ],
     preferred:[
@@ -273,7 +276,6 @@ function seed(){
     requests:[
       {id:'q6',type:'shift',from:'d2',date:'12 نوفمبر',status:'new',targetDate:'2026-11-15',classIds:['k16','k2'],preferred:{date:'2026-11-17',slot:1},text:'طلاب من الفرقة الرابعة مشاركين في ماراثون خارج الجامعة يوم الأحد، فهنقل محاضرات اليوم كله.'},
       {id:'q1',type:'online',from:'d1',date:'10 نوفمبر',status:'new',classId:'k1',scope:'term',text:'المحاضرة هتتشرح أونلاين باقي الترم بسبب سفري لمؤتمر علمي.'},
-      {id:'q2',type:'booking',from:'p2',date:'10 نوفمبر',status:'new',text:'فتح مجموعة معمل تالتة لقواعد البيانات بعد زيادة التسجيل.',payload:{courseId:'co4',kind:'lab',group:'G3',instructor:'m2',students:20,day:5,slot:1}},
       {id:'q3',type:'maintenance',from:'m2',date:'11 نوفمبر',status:'new',roomId:'r8',devicesBroken:2,text:'جهازين في معمل 1 مش بيشتغلوا (رقم 7 و 12).'},
       {id:'q4',type:'exceptional',from:'p1',date:'11 نوفمبر',status:'new',text:'مناقشة مشروع تخرج – فريق 7، والحضور 15 فرد.',payload:{title:'مناقشة مشروع تخرج – فريق 7',organizer:'منسق قسم علوم الحاسب',kind:'defense',students:15,day:5,slot:2,reqs:[{eq:'projector',mandatory:true,reason:'عرض المشروع'}]}},
       {id:'q5',type:'cancel_once',from:'d3',date:'11 نوفمبر',status:'new',classId:'k3',when:'الأحد 15 نوفمبر',onDate:'2026-11-15',text:'ظرف عائلي، والمحاضرة هتتعوض لاحقاً.'}
@@ -285,6 +287,7 @@ function seed(){
       {at:'5 نوفمبر 10:12',who:'مسؤول الصيانة',action:'تغيير حالة مكان',details:'مدرج 3 ← صيانة (5–25 نوفمبر)',reason:'تغيير وحدات التكييف'},
       {at:'3 نوفمبر 12:40',who:'موظف التوزيع',action:'قاعة مفضلة',details:'د. أحمد سالم ← قاعة 1 (كل المواد)',reason:'محاضرة قواعد البيانات بتتوزع يدوياً على قاعة 12'}
     ],
+    cmSeen:{},cmRefs:{},cmLast:null,
     ui:{view:'dashboard',drawer:null,filters:{building:'',person:'',cohort:''},roomFilters:{building:'',kind:'',state:'',q:''},reqFilter:'new',calWeek:null,calFilters:{building:'',person:'',cohort:'',kind:''},newShift:null,pref:{doctorId:'d1',roomId:'r1',courseId:'',result:null}}
   };
   st.classes.forEach(c=>{ if(!c.exceptional) c.cohort=st.courses.find(x=>x.id===c.courseId).cohort; });
@@ -303,7 +306,7 @@ const room=id=>find(S.rooms,id), course=id=>find(S.courses,id), cls=id=>find(S.c
 const nid=p=>p+(++S.seq);
 const fmtDate=d=>{ if(!d) return ''; const [y,m,dd]=d.split('-').map(Number); return `${dd} ${MONTHS[m-1]}`; };
 const stamp=()=>{ const n=new Date(); return `اليوم ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; };
-const when=c=>`${DAYS[c.day]} ${SLOTS[c.slot]}`;
+const when=c=>c.day==null?'بدون موعد':`${DAYS[c.day]} ${SLOTS[c.slot]}`;
 function label(c){ if(c.exceptional) return c.title; const co=course(c.courseId); return `${co.name} — ${S.usage[c.kind]}${c.group!=='all'?' '+c.group:''}`; }
 function shortLabel(c){ if(c.exceptional) return c.title; const co=course(c.courseId); return `${co.code} ${S.usage[c.kind]}${c.group!=='all'?' '+c.group:''}`; }
 function log(action,details,reason=''){ S.log.unshift({at:stamp(),who:'موظف التوزيع',action,details,reason}); }
@@ -377,7 +380,7 @@ function recommend(c){
 }
 function currentFit(c){ return c.roomId?evaluate(room(c.roomId),c):null; }
 function conflictsOf(c){
-  const out=[]; if(c.status!=='active') return out;
+  const out=[]; if(c.status!=='active'||c.day==null) return out;
   for(const o of S.classes){
     if(o.id===c.id||o.status!=='active'||o.day!==c.day||o.slot!==c.slot) continue;
     if(c.instructor && o.instructor===c.instructor) out.push(`${person(c.instructor).name} عنده كمان: ${label(o)}`);
@@ -388,12 +391,13 @@ function conflictsOf(c){
 }
 function classStatus(c){
   if(c.status==='cancelled') return 'cancelled';
+  if(c.day==null) return 'unscheduled';
   if(c.mode==='online') return 'online';
   if(!c.roomId) return 'waiting';
   if(conflictsOf(c).length) return 'issue';
   return 'ok';
 }
-const CLS_STATUS={ok:['في مكانها','ok'],waiting:['في الانتظار','bad'],issue:['محتاجة مراجعة','warn'],online:['أونلاين','off'],cancelled:['ملغية','off']};
+const CLS_STATUS={unscheduled:['محتاجة موعد','bad'],ok:['في مكانها','ok'],waiting:['في الانتظار','bad'],issue:['محتاجة مراجعة','warn'],online:['أونلاين','off'],cancelled:['ملغية','off']};
 
 /* Who could use room r at day/slot: waiting classes first, then classes sitting in a worse room. */
 function freedCandidates(roomId,day,slot){
@@ -515,6 +519,95 @@ function personSessionsOn(pid,date){
   return out;
 }
 
+/* ============ Link with Course Management ============
+   Prototype transport: both apps share browser storage when opened from the same site.
+   Course Management writes its sent offerings to BUS_CM; this app writes allocation status to BUS_ROOMS.
+   In production this becomes an API between the two systems. */
+const BUS_CM='team4.bus.cm', BUS_ROOMS='team4.bus.rooms', SAVE_KEY='team4.rooms.state';
+const store={
+  get(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const refOf=c=>c.exceptional?null:`${course(c.courseId).code}-${c.kind}-${c.group}`;
+function ensurePerson(p){ if(p&&!person(p.id)) S.people.push({id:p.id,name:p.name,role:p.role||(p.id.startsWith('m')?'ta':'doctor')}); }
+function applyOffering(oid,p){
+  const first=!(oid in S.cmSeen); const prevRefs=S.cmRefs[oid]||[];
+  const lines=[], newIds=[], affected=[];
+  if(p.cancelled){
+    const gone=S.classes.filter(c=>c.status==='active'&&c.cmOffering===oid);
+    for(const c of gone){ c.status='cancelled'; notifyPeople(c,`${label(c)} اتلغت من Course Management`); releaseRoom(c,`${label(c)} اتلغى طرحها`); }
+    if(gone.length) S.notifications.unshift({id:nid('n'),type:'cm',open:true,at:stamp(),title:`اتلغى طرح ${course(gone[0].courseId).name}`,lines:[`${gone.length} حصة اتلغت والأماكن اتعرضت على المواد المحتاجة.`],classIds:[]});
+    S.cmRefs[oid]=[]; return;
+  }
+  let co=course(p.course.id);
+  if(!co){ co={id:p.course.id,code:p.course.code,name:p.course.name,dept:p.course.department,cohort:p.cohort.id,students:0,reqs:{}}; S.courses.push(co); lines.push('مادة جديدة على نظام القاعات'); }
+  Object.assign(co,{code:p.course.code,name:p.course.name,dept:p.course.department,cohort:p.cohort.id,managed:true});
+  const refs=[];
+  for(const s of p.sessions){
+    refs.push(s.ref); ensurePerson(s.instructor);
+    const reqs=s.requirements.map(r=>({eq:r.equipment,mandatory:r.mandatory,reason:r.reason||''}));
+    if(JSON.stringify(co.reqs[s.kind]||[])!==JSON.stringify(reqs)){ if(!first) lines.push(`${S.usage[s.kind]}: المتطلبات اتغيرت`); co.reqs[s.kind]=reqs; }
+    if(s.kind==='lecture') co.students=s.students;
+    const c=S.classes.find(x=>x.status==='active'&&!x.exceptional&&x.courseId===co.id&&x.kind===s.kind&&x.group===s.group);
+    const ins=s.instructor?s.instructor.id:null;
+    if(!c){
+      const n={id:nid('k'),courseId:co.id,kind:s.kind,group:s.group,instructor:ins,students:s.students,day:null,slot:null,roomId:null,mode:s.deliveryMode,status:'active',overrides:{},exceptional:false,cohort:p.cohort.id,cmOffering:oid};
+      S.classes.push(n); newIds.push(n.id); continue;
+    }
+    c.cmOffering=oid;
+    if(c.students!==s.students){ if(!first) lines.push(`${shortLabel(c)}: الطلاب ${c.students} ← ${s.students}`); c.students=s.students; }
+    if(c.instructor!==ins){ if(!first) lines.push(`${shortLabel(c)}: المحاضر ${c.instructor?person(c.instructor).name:'—'} ← ${s.instructor?s.instructor.name:'—'}`); c.instructor=ins; }
+    if(c.mode!==s.deliveryMode){
+      lines.push(`${shortLabel(c)}: ${MODE[c.mode]} ← ${MODE[s.deliveryMode]}`);
+      const was=c.mode; c.mode=s.deliveryMode; notifyPeople(c,`${label(c)} بقت ${MODE[c.mode]}`);
+      if(c.mode==='online') releaseRoom(c,`${label(c)} اتحولت أونلاين من Course Management`);
+      else if(was==='online'&&c.day!=null) newIds.push(c.id);
+    }
+    if(c.roomId&&!currentFit(c).ok) affected.push(c);
+  }
+  for(const r of prevRefs) if(!refs.includes(r)){
+    const c=S.classes.find(x=>x.status==='active'&&x.cmOffering===oid&&refOf(x)===r);
+    if(c){ c.status='cancelled'; lines.push(`${shortLabel(c)} اتشالت`); notifyPeople(c,`${label(c)} اتلغت`); releaseRoom(c,`${label(c)} اتشالت من Course Management`); }
+  }
+  S.cmRefs[oid]=refs;
+  if(affected.length) lines.push(`${affected.length} حصة مكانها مبقاش مناسب بعد التحديث`);
+  if(lines.length||newIds.length){
+    if(newIds.length) lines.push(`${newIds.length} حصة محتاجة ${cls(newIds[0]).day==null?'موعد ومكان':'مكان'}`);
+    S.notifications.unshift({id:nid('n'),type:'cm',open:true,at:stamp(),title:`${co.code} · ${co.name}`,lines,classIds:[...newIds,...affected.map(c=>c.id)]});
+    log('تحديث من Course Management',`${co.code} ${co.name}: ${lines.join(' · ')}`);
+  }
+}
+function syncFromCM(){
+  const bus=store.get(BUS_CM); if(!bus||!bus.offerings) return false;
+  let changed=false;
+  for(const [oid,p] of Object.entries(bus.offerings)){
+    const h=JSON.stringify(p); if(S.cmSeen[oid]===h) continue;
+    applyOffering(oid,p); S.cmSeen[oid]=h; changed=true;
+  }
+  if(changed||!S.cmLast) S.cmLast=bus.at||stamp();
+  return changed;
+}
+function roomsStatus(){
+  const out={};
+  for(const c of S.classes){
+    if(c.exceptional||!c.cmOffering) continue;
+    const st=classStatus(c); const r=c.roomId?room(c.roomId):null;
+    out[refOf(c)]={state:{ok:'scheduled',waiting:'waiting',issue:'issue',online:'online',cancelled:'cancelled',unscheduled:'unscheduled'}[st],label:CLS_STATUS[st][0],when:c.day==null?null:when(c),room:r?r.name:null,building:r?building(r.building).name:null};
+  }
+  return out;
+}
+let lastSaved='', lastStatus='';
+function persist(){
+  const {ui,...rest}=S; const j=JSON.stringify(rest);
+  if(j!==lastSaved){ lastSaved=j; store.set(SAVE_KEY,rest); }
+  const st=JSON.stringify(roomsStatus());
+  if(st!==lastStatus){ lastStatus=st; store.set(BUS_ROOMS,{at:stamp(),status:JSON.parse(st)}); }
+}
+window.addEventListener('storage',e=>{
+  if(e.key===BUS_CM&&syncFromCM()){ render(); toast('وصل تحديث من Course Management'); }
+});
+
 /* ============ Dialog ============ */
 function fieldHtml(f){
   const id='f-'+f.id, v=esc(f.value??'');
@@ -565,7 +658,7 @@ function renderRail(){
   const badges={dashboard:openN,requests:newReq};
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${S.term.name} · موظف التوزيع</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot"><span>نموذج أولي ببيانات تجريبية. التغييرات بتتمسح لما تعيد تحميل الصفحة.</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بـ Course Management</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">Course Management مش متصل</span><span>افتح <a href="course-management/">إدارة المواد</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -573,12 +666,14 @@ function viewDashboard(){
   const maint=S.rooms.filter(r=>roomState(r)==='maintenance').length;
   const waiting=S.classes.filter(c=>classStatus(c)==='waiting');
   const issues=S.classes.filter(c=>classStatus(c)==='issue');
+  const unsched=S.classes.filter(c=>classStatus(c)==='unscheduled');
   const newReq=S.requests.filter(q=>q.status==='new').length;
   const notes=S.notifications.filter(n=>n.open);
   return `<div class="page-head"><div><h2>لوحة المتابعة</h2><p>الإشعارات والمواد اللي محتاجة قرار منك النهارده.</p></div></div>
   <div class="tiles">
     <button class="tile ok" data-nav="rooms"><b>${avail}<small class="muted" style="font-size:15px"> / ${S.rooms.length}</small></b><span>أماكن متاحة</span></button>
     <button class="tile ${maint?'bad':''}" data-nav="rooms"><b>${maint}</b><span>في الصيانة</span></button>
+    <button class="tile ${unsched.length?'bad':''}" data-nav="dashboard"><b>${unsched.length}</b><span>حصص محتاجة موعد</span></button>
     <button class="tile ${waiting.length?'bad':''}" data-nav="schedule"><b>${waiting.length}</b><span>مواد في الانتظار</span></button>
     <button class="tile ${issues.length?'warn':''}" data-nav="schedule"><b>${issues.length}</b><span>محتاجة مراجعة</span></button>
     <button class="tile" data-nav="requests"><b>${newReq}</b><span>طلبات جديدة</span></button>
@@ -588,6 +683,8 @@ function viewDashboard(){
       <div class="stack">${notes.length?notes.map(noteCard).join(''):'<div class="empty">مفيش إشعارات مفتوحة.</div>'}</div>
     </section>
     <div class="stack">
+      ${unsched.length?`<section class="panel" aria-labelledby="h-un"><h3 id="h-un">حصص جديدة محتاجة موعد ومكان <span class="count">${unsched.length}</span></h3>
+        <div class="stack">${unsched.map(c=>`<div class="card stripe-bad"><div class="card-head"><div><h4>${esc(label(c))}</h4><div class="meta">${c.students} طالب · ${c.instructor?esc(person(c.instructor).name):'—'} · ${MODE[c.mode]} · من Course Management</div></div><button class="btn sm" data-act="openClass" data-id="${c.id}">حدد الموعد</button></div></div>`).join('')}</div></section>`:''}
       <section class="panel" aria-labelledby="h-wait"><h3 id="h-wait">مواد محتاجة مكان <span class="count">${waiting.length}</span></h3>
         <div class="stack">${waiting.length?waiting.map(c=>classMiniCard(c,'stripe-bad')).join(''):'<div class="empty">كل المواد الحضوري ليها مكان.</div>'}</div>
       </section>
@@ -603,6 +700,9 @@ function classMiniCard(c,stripe,extra){
   return `<div class="card ${stripe}"><div class="card-head"><div><h4>${esc(label(c))}</h4><div class="meta">${when(c)} · ${c.students} طالب${c.displaced?` · اتشالت من ${esc(c.displaced)}`:''}</div>${extra?`<div class="meta" style="color:var(--warn)">${esc(extra)}</div>`:''}${why?`<div class="meta">${esc(why)}</div>`:''}</div><button class="btn sm" data-act="openClass" data-id="${c.id}">الاقتراحات</button></div></div>`;
 }
 function noteCard(n){
+  if(n.type==='cm') return `<div class="card stripe-acc"><div class="card-head"><div>${pill('Course Management','acc')} <h4 style="display:inline">${esc(n.title)}</h4><div class="meta">${esc(n.at)}</div></div><button class="btn sm ghost" data-act="dismiss" data-id="${n.id}">إخفاء</button></div>
+    ${n.lines.length?`<ul class="meta" style="margin:6px 0 0;padding-inline-start:18px">${n.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`:''}
+    ${(n.classIds||[]).map(cls).filter(Boolean).map(c=>`<div class="cand"><div><b>${esc(label(c))}</b><div class="meta">${when(c)} · ${clsPill(c)}</div></div><button class="btn sm" data-act="openClass" data-id="${c.id}">${c.day==null?'حدد الموعد':'افتح'}</button></div>`).join('')}</div>`;
   if(n.type==='info') return `<div class="card stripe-off"><div class="card-head"><div><h4>${esc(n.title)}</h4><div class="meta">${esc(n.at)}</div></div><button class="btn sm ghost" data-act="dismiss" data-id="${n.id}">إخفاء</button></div><p class="meta" style="margin:6px 0 0">${esc(n.text)}</p></div>`;
   if(n.type==='affected'){
     const list=n.classIds.map(cls).filter(Boolean);
@@ -764,8 +864,9 @@ function viewCourses(){
     const kinds=[...new Set([...Object.keys(co.reqs),...S.classes.filter(c=>c.courseId===co.id).map(c=>c.kind)])];
     const classes=S.classes.filter(c=>c.courseId===co.id);
     return `<section class="panel course" aria-label="${esc(co.name)}"><div class="card-head"><div><h3 style="font-size:17px">${esc(co.code)} · ${esc(co.name)}</h3><div class="meta">قسم ${esc(co.dept)} · ${esc(cohort(co.cohort).name)}</div></div>
-      <label class="meta" style="display:flex;align-items:center;gap:8px">الطلاب المسجلين في الترم <input type="number" min="1" style="width:90px" data-chg="students" data-id="${co.id}" value="${co.students}"></label></div>
-      <div class="course-kinds">${kinds.map(k=>`<div class="kind-box"><h5>${esc(S.usage[k])}</h5>${(co.reqs[k]||[]).map((q,i)=>`<div class="reqline"><span>${EQ[q.eq]}</span><button class="toggle ${q.mandatory?'on':''}" data-act="toggleMand" data-co="${co.id}" data-k="${k}" data-i="${i}" aria-pressed="${q.mandatory}">${q.mandatory?'إلزامي':'اختياري'}</button><button class="btn sm ghost" data-act="delReq" data-co="${co.id}" data-k="${k}" data-i="${i}" aria-label="حذف ${EQ[q.eq]}">حذف</button>${q.mandatory?`<input type="text" data-chg="reqReason" data-co="${co.id}" data-k="${k}" data-i="${i}" value="${esc(q.reason)}" placeholder="سبب الإلزام" aria-label="سبب إلزام ${EQ[q.eq]}">`:''}</div>`).join('')||'<div class="meta">مفيش متطلبات.</div>'}
+      ${co.managed?`<span class="meta">الطلاب: <b class="num">${co.students}</b> · ${pill('من Course Management','acc')}</span>`:`<label class="meta" style="display:flex;align-items:center;gap:8px">الطلاب المسجلين في الترم <input type="number" min="1" style="width:90px" data-chg="students" data-id="${co.id}" value="${co.students}"></label>`}</div>
+      ${co.managed?'<div class="infobox">بيانات المادة ومتطلباتها بتيجي من Course Management، والتعديل بيتعمل هناك. تقدر تشيل الإلزام لحصة معينة من تفاصيل الحصة.</div>':''}
+      <div class="course-kinds">${kinds.map(k=>co.managed?`<div class="kind-box"><h5>${esc(S.usage[k])}</h5>${(co.reqs[k]||[]).map(q=>`<div class="reqline"><span>${EQ[q.eq]}</span>${q.mandatory?pill('إلزامي','bad'):pill('اختياري','off')}<span></span>${q.mandatory&&q.reason?`<small class="meta" style="grid-column:1/-1">${esc(q.reason)}</small>`:''}</div>`).join('')||'<div class="meta">مفيش متطلبات.</div>'}</div>`:`<div class="kind-box"><h5>${esc(S.usage[k])}</h5>${(co.reqs[k]||[]).map((q,i)=>`<div class="reqline"><span>${EQ[q.eq]}</span><button class="toggle ${q.mandatory?'on':''}" data-act="toggleMand" data-co="${co.id}" data-k="${k}" data-i="${i}" aria-pressed="${q.mandatory}">${q.mandatory?'إلزامي':'اختياري'}</button><button class="btn sm ghost" data-act="delReq" data-co="${co.id}" data-k="${k}" data-i="${i}" aria-label="حذف ${EQ[q.eq]}">حذف</button>${q.mandatory?`<input type="text" data-chg="reqReason" data-co="${co.id}" data-k="${k}" data-i="${i}" value="${esc(q.reason)}" placeholder="سبب الإلزام" aria-label="سبب إلزام ${EQ[q.eq]}">`:''}</div>`).join('')||'<div class="meta">مفيش متطلبات.</div>'}
         <div class="row-actions" style="margin-top:8px"><select id="add-${co.id}-${k}" aria-label="متطلب جديد">${Object.entries(EQ).filter(([e])=>!(co.reqs[k]||[]).some(q=>q.eq===e)).map(([e,t])=>`<option value="${e}">${t}</option>`).join('')}</select><button class="btn sm" data-act="addReq" data-co="${co.id}" data-k="${k}">إضافة</button></div></div>`).join('')}</div>
       <div><div class="sec-title">الحصص في الترم الحالي</div><div class="row-actions">${classes.map(c=>`<button class="btn sm" data-act="openClass" data-id="${c.id}">${esc(S.usage[c.kind])}${c.group!=='all'?' '+c.group:''} · ${when(c)} · ${CLS_STATUS[classStatus(c)][0]}</button>`).join('')}</div></div>
     </section>`;}).join('')}</div>`;
@@ -834,11 +935,11 @@ function viewSettings(){
 function drawerClass(c){
   const st=classStatus(c); const co=c.exceptional?null:course(c.courseId);
   const fit=currentFit(c); const conf=conflictsOf(c); const reqs=reqsOf(c);
-  const rec=(c.status==='active'&&c.mode!=='online')?recommend(c):null;
+  const rec=(c.status==='active'&&c.mode!=='online'&&c.day!=null)?recommend(c):null;
   return `<div class="drawer-head"><div><div class="meta">${c.exceptional?'حجز استثنائي':esc(co.code)}</div><h3 id="dr-t">${esc(label(c))}</h3><div style="margin-top:4px">${clsPill(c)}</div></div><button class="btn ghost" data-act="closeDrawer" aria-label="إغلاق">إغلاق</button></div>
   <div class="drawer-body" id="drawer-body">
     <dl class="kv">
-      <dt>الموعد</dt><dd>${when(c)}</dd>
+      <dt>الموعد</dt><dd>${c.day==null&&c.status==='active'?timePicker(c):when(c)}</dd>
       ${c.exceptional?`<dt>الجهة</dt><dd>${esc(c.organizer)}</dd>`:`<dt>المحاضر</dt><dd>${esc(person(c.instructor).name)}</dd><dt>الفرقة</dt><dd>${esc(cohort(c.cohort).name)}${c.group!=='all'?' · مجموعة '+c.group:''}</dd>`}
       <dt>العدد</dt><dd class="num">${c.students} ← المطلوب ${needed(c)} مكان (زيادة ${S.settings.buffer}%)</dd>
       <dt>طريقة التدريس</dt><dd>${c.exceptional||c.status!=='active'?MODE[c.mode]:`<select data-chg="mode" data-id="${c.id}" aria-label="طريقة التدريس">${Object.entries(MODE).map(([k,t])=>`<option value="${k}"${c.mode===k?' selected':''}>${t}</option>`).join('')}</select>`}</dd>
@@ -855,6 +956,19 @@ function drawerClass(c){
       ${c.roomId===r.id?'':`<button class="btn sm primary" data-act="assign" data-c="${c.id}" data-r="${r.id}">${c.roomId?'انقلها هنا':'احجز'}</button>`}</div>`).join(''):'<div class="empty">مفيش مكان مناسب فاضي في الموعد ده. المادة هتفضل في الانتظار، وأول ما مكان مناسب يفضى هيوصلك إشعار.</div>'}</div>
       <details style="margin-top:8px"><summary>أماكن مستبعدة وسبب الاستبعاد (${rec.no.length})</summary><div class="card" style="margin-top:6px">${rec.no.map(({r,e})=>`<div class="cand"><div><b>${esc(r.name)}</b><div class="meta">${esc(e.reason)}</div></div></div>`).join('')}</div></details></section>`:''}
   </div>`;
+}
+/* Only times where the lecturer and the cohort/group are free; each option says how many suitable rooms are free then. */
+function timePicker(c){
+  const opts=[];
+  for(let d=0;d<DAYS.length;d++) for(let sl=0;sl<SLOTS.length;sl++){
+    const t={...c,day:d,slot:sl};
+    const busy=S.classes.some(o=>o.id!==c.id&&o.status==='active'&&o.day===d&&o.slot===sl&&((c.instructor&&o.instructor===c.instructor)||(c.cohort&&o.cohort===c.cohort&&(c.group==='all'||o.group==='all'||c.group===o.group))));
+    if(busy) continue;
+    const n=c.mode==='online'?null:S.rooms.filter(r=>evaluate(r,t).ok).length;
+    opts.push([`${d}-${sl}`,`${DAYS[d]} ${SLOTS[sl]}${n==null?'':` · ${n?n+' مكان مناسب':'مفيش مكان'}`}`,n]);
+  }
+  opts.sort((a,b)=>(b[2]??99)-(a[2]??99));
+  return `<select data-chg="setTime" data-id="${c.id}" aria-label="اختار الموعد"><option value="">— اختار يوم وفترة —</option>${opts.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select><div class="hint">المعروض بس المواعيد اللي المحاضر والفرقة فاضيين فيها.</div>`;
 }
 function drawerRoom(r){
   const list=S.classes.filter(c=>c.status==='active'&&c.roomId===r.id);
@@ -890,12 +1004,13 @@ function render(){
   root.dataset.key=dr.type+dr.id;
   if(wasOpen) $('#drawer-body').scrollTop=prev;
 }
+const _render=render; render=function(){ _render(); persist(); };
 function go(view){ if(location.hash!=='#'+view) location.hash=view; else { S.ui.view=view; render(); } }
 function syncHash(){ const h=location.hash.slice(1); S.ui.view=NAV.some(([k])=>k===h)?h:'dashboard'; S.ui.drawer=null; $('#drawer-root').dataset.key=''; render(); window.scrollTo(0,0); }
 
 /* ============ Actions ============ */
 const ACT={
-  reset(){ S=seed(); $('#drawer-root').dataset.key=''; S.ui.view=location.hash.slice(1)||'dashboard'; toast('رجعت البيانات التجريبية'); },
+  reset(){ store.del(SAVE_KEY); S=seed(); syncFromCM(); $('#drawer-root').dataset.key=''; S.ui.view=location.hash.slice(1)||'dashboard'; toast('رجعت البيانات التجريبية'); },
   openClass(d){ S.ui.drawer={type:'class',id:d.id}; },
   openRoom(d){ S.ui.drawer={type:'room',id:d.id}; },
   closeDrawer(){ S.ui.drawer=null; $('#drawer-root').dataset.key=''; },
@@ -1086,6 +1201,11 @@ const CHG={
   nsPick(t){ S.ui.newShift.picks[t.dataset.id]=t.checked; },
   nsAll(t){ const f=S.ui.newShift; personSessionsOn(f.doctorId,f.date).forEach(x=>f.picks[x.c.id]=t.checked); },
   setNum(t){ S.settings[t.dataset.k]=Math.max(0,Number(t.value)||0); log('إعدادات',`${t.dataset.k==='shiftWindow'?'مهلة الموعد البديل':'أقل مدة للطلب'} ← ${S.settings[t.dataset.k]} يوم`); },
+  setTime(t){
+    if(!t.value) return; const c=cls(t.dataset.id); const [d,sl]=t.value.split('-').map(Number);
+    c.day=d; c.slot=sl; log('تحديد موعد',`${label(c)} ← ${when(c)}`);
+    if(c.mode==='online') notifyPeople(c,`${label(c)}: الموعد ${when(c)} (أونلاين)`); else toast('اتحدد الموعد. اختار المكان من الاقتراحات.');
+  },
   reqReason(t){ const q=course(t.dataset.co).reqs[t.dataset.k][t.dataset.i]; q.reason=t.value; },
   mode(t){
     const c=cls(t.dataset.id); const old=c.mode; c.mode=t.value;
@@ -1119,6 +1239,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('input',e=>{ const t=e.target.closest('[data-inp]'); if(t&&S.ui.newShift) S.ui.newShift[t.dataset.k]=t.value; });
 document.addEventListener('change',e=>{ const t=e.target.closest('[data-chg]'); if(!t) return; CHG[t.dataset.chg](t); render(); });
 window.addEventListener('hashchange',syncHash);
+(function(){ const saved=store.get(SAVE_KEY); if(saved&&saved.rooms) S={...saved,ui:S.ui}; syncFromCM(); })();
 syncHash();
 </script>
 </body>

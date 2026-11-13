@@ -205,7 +205,9 @@ function seed(){
   return st;
 }
 let S;
-function boot(){
+function boot(fresh){
+  const saved=fresh?null:store.get(SAVE_KEY);
+  if(saved&&saved.offerings){ S={...saved,ui:{view:'cohorts',cohort:'c1',drawer:null,catFilter:{cohort:'',dept:'',q:''},outFilter:'all',preview:null}}; return; }
   S=seed();
   S.ui={view:'cohorts',cohort:'c1',drawer:null,catFilter:{cohort:'',dept:'',q:''},outFilter:'all',preview:null};
   for(const o of S.offerings){ for(const k of Object.keys(course(o.courseId).sessions)) if(k!=='lecture') rebuildGroups(o,k,o.defaultTA); }
@@ -249,12 +251,12 @@ function payload(o){
   const co=course(o.courseId);
   return {
     term:S.term.name, offeringId:o.id,
-    course:{code:co.code,name:co.name,department:co.dept,creditHours:co.credits},
+    course:{id:co.id,code:co.code,name:co.name,department:co.dept,creditHours:co.credits},
     cohort:{id:co.cohort,name:cohort(co.cohort).name},
     sessions:sessionsOf(o).map(s=>({
       ref:s.ref, kind:s.kind, group:s.group, students:s.students,
       sessionsPerWeek:s.perWeek, hoursEach:s.hours, deliveryMode:s.mode,
-      instructor:s.instructor?{id:s.instructor,name:person(s.instructor).name}:null,
+      instructor:s.instructor?{id:s.instructor,name:person(s.instructor).name,role:person(s.instructor).role}:null,
       needsRoom:s.mode!=='online',
       requirements:s.reqs.map(q=>({equipment:q.eq,label:EQ[q.eq],mandatory:q.mandatory,reason:q.reason||null}))
     }))
@@ -289,7 +291,7 @@ function sendState(o){
 }
 function send(o){
   const i=issuesOf(o); if(i.bad.length) return false;
-  o.sent=JSON.stringify(payload(o)); o.sentAt=stamp(); return true;
+  o.sent=JSON.stringify(payload(o)); o.sentAt=stamp(); o.cancelledSent=false; S.lastSendAt=o.sentAt; return true;
 }
 /* What changed since the last send, field by field, for the update notice. */
 function diffSent(o){
@@ -306,6 +308,49 @@ function diffSent(o){
   for(const r of ma.keys()) if(!mb.has(r)) out.push(`حصة اتشالت: ${r}`);
   return out;
 }
+
+/* ============ Link with the rooms system ============
+   Prototype transport: both apps share browser storage when opened from the same site.
+   This app publishes sent offerings to BUS_CM; the rooms system publishes allocation status to BUS_ROOMS.
+   In production this becomes an API between the two systems. */
+const BUS_CM='team4.bus.cm', BUS_ROOMS='team4.bus.rooms', SAVE_KEY='team4.cm.state';
+const store={
+  get(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+let ROOMS=store.get(BUS_ROOMS);
+function busPayload(){
+  const offerings={};
+  for(const o of S.offerings){
+    if(o.offered&&o.sent) offerings[o.id]=JSON.parse(o.sent);
+    else if(o.cancelledSent) offerings[o.id]={cancelled:true};
+  }
+  return offerings;
+}
+let lastBus='', lastSave='';
+function persist(){
+  const {ui,...rest}=S; const j=JSON.stringify(rest);
+  if(j!==lastSave){ lastSave=j; store.set(SAVE_KEY,rest); }
+  const b=JSON.stringify(busPayload());
+  if(b!==lastBus){ lastBus=b; store.set(BUS_CM,{at:S.lastSendAt||stamp(),offerings:JSON.parse(b)}); }
+}
+/* Allocation status of each session of an offering, as the rooms system reported it. */
+function allocOf(o){
+  const st=ROOMS&&ROOMS.status||{};
+  const list=sessionsOf(o).map(s=>({s,a:st[s.ref]||null}));
+  const need=list.filter(x=>x.s.mode!=='online');
+  return {list,done:need.filter(x=>x.a&&x.a.state==='scheduled').length,need:need.length,known:list.some(x=>x.a)};
+}
+const ALLOC_KIND={scheduled:'ok',online:'off',waiting:'bad',unscheduled:'bad',issue:'warn',cancelled:'off'};
+function allocCell(o){
+  if(!o.offered||!o.sent) return '<span class="meta">—</span>';
+  const a=allocOf(o);
+  if(!ROOMS) return '<span class="meta">مستني نظام القاعات</span>';
+  if(!a.known) return '<span class="meta">لسه ماوصلش</span>';
+  return a.need?pill(`${a.done} / ${a.need} اتوزعت`,a.done===a.need?'ok':a.done?'warn':'bad'):pill('أونلاين','off');
+}
+window.addEventListener('storage',e=>{ if(e.key===BUS_ROOMS){ ROOMS=store.get(BUS_ROOMS); render(); } });
 
 /* ============ Dialog ============ */
 function fieldHtml(f){
@@ -343,7 +388,7 @@ function renderRail(){
   const pending=S.offerings.filter(o=>o.offered&&sendState(o)[1]!=='ok').length;
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة المواد الدراسية</h1><small>${S.term.name} · الأقسام وشئون الطلاب</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${k==='outbox'&&pending?`<span class="badge">${pending}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot"><span>نموذج أولي منفصل عن نظام القاعات. البيانات تجريبية وبتتمسح لما تعيد تحميل الصفحة.</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 
 function sessChips(o){
@@ -373,9 +418,9 @@ function viewCohorts(){
     <div class="tile"><b>${sessions}</b><span>حصة محتاجة مكان</span></div>
     <div class="tile ${blocked?'bad':'ok'}"><b>${blocked}</b><span>مادة ناقصها بيانات</span></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>القسم</th><th>س.م</th><th>الطلاب</th><th>الحصص</th><th>المحاضر</th><th>الإرسال</th><th>تنبيهات</th></tr></thead><tbody>
+  <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>القسم</th><th>س.م</th><th>الطلاب</th><th>الحصص</th><th>المحاضر</th><th>الإرسال</th><th>التوزيع</th><th>تنبيهات</th></tr></thead><tbody>
   ${list.map(o=>{ const co=course(o.courseId), is=issuesOf(o), [st,k]=sendState(o);
-    return `<tr class="click" data-act="openOff" data-id="${o.id}" tabindex="0"${o.offered?'':' style="opacity:.6"'}><td><b>${esc(co.code)}</b> · ${esc(co.name)}</td><td>${esc(co.dept)}</td><td class="num">${co.credits}</td><td class="num">${o.students}</td><td><div class="sess">${sessChips(o)}</div></td><td>${o.staff.lecture?esc(person(o.staff.lecture).name):co.sessions.lecture?'<span style="color:var(--bad)">مش متحدد</span>':'—'}</td><td>${pill(st,k)}${o.sentAt&&o.offered?`<div class="meta">${esc(o.sentAt)}</div>`:''}</td><td>${is.bad.map(x=>`<span class="tag bad">${esc(x)}</span>`).join('')}${is.warn.map(x=>`<span class="tag warn">${esc(x)}</span>`).join('')}</td></tr>`; }).join('')||'<tr><td colspan="8" class="meta">مفيش مواد للفرقة دي في الترم ده.</td></tr>'}
+    return `<tr class="click" data-act="openOff" data-id="${o.id}" tabindex="0"${o.offered?'':' style="opacity:.6"'}><td><b>${esc(co.code)}</b> · ${esc(co.name)}</td><td>${esc(co.dept)}</td><td class="num">${co.credits}</td><td class="num">${o.students}</td><td><div class="sess">${sessChips(o)}</div></td><td>${o.staff.lecture?esc(person(o.staff.lecture).name):co.sessions.lecture?'<span style="color:var(--bad)">مش متحدد</span>':'—'}</td><td>${pill(st,k)}${o.sentAt&&o.offered?`<div class="meta">${esc(o.sentAt)}</div>`:''}</td><td>${allocCell(o)}</td><td>${is.bad.map(x=>`<span class="tag bad">${esc(x)}</span>`).join('')}${is.warn.map(x=>`<span class="tag warn">${esc(x)}</span>`).join('')}</td></tr>`; }).join('')||'<tr><td colspan="9" class="meta">مفيش مواد للفرقة دي في الترم ده.</td></tr>'}
   </tbody></table></div>`;
 }
 
@@ -412,10 +457,10 @@ function viewOutbox(){
   return `<div class="page-head"><div><h2>الإرسال لنظام القاعات</h2><p>كل مادة بتتبعت لنظام القاعات كقائمة حصص محتاجة أماكن. أي تغيير بعد الإرسال لازم يتبعت كتحديث.</p></div>
   <div class="inline"><button class="btn sm ${f==='all'?'primary':''}" data-act="outFilter" data-v="all">الكل</button><button class="btn sm ${f==='acc'?'primary':''}" data-act="outFilter" data-v="acc">ماتبعتتش</button><button class="btn sm ${f==='warn'?'primary':''}" data-act="outFilter" data-v="warn">اتغيرت</button><button class="btn sm ${f==='ok'?'primary':''}" data-act="outFilter" data-v="ok">اتبعتت</button></div></div>
   <div class="cols">
-    <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>الفرقة</th><th>الحصص</th><th>الحالة</th><th></th></tr></thead><tbody>
+    <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>الفرقة</th><th>الحصص</th><th>الحالة</th><th>التوزيع</th><th></th></tr></thead><tbody>
     ${list.map(o=>{ const co=course(o.courseId), [st,k]=sendState(o), is=issuesOf(o), ss=sessionsOf(o), d=diffSent(o);
-      return `<tr><td><b>${esc(co.code)}</b> · ${esc(co.name)}${k==='warn'?`<div class="meta" style="color:var(--warn)">${d.slice(0,3).map(esc).join('<br>')}${d.length>3?'<br>…':''}</div>`:''}</td><td>${esc(cohort(co.cohort).name)}</td><td class="num">${ss.filter(s=>s.mode!=='online').length}${ss.some(s=>s.mode==='online')?` <span class="meta">+ ${ss.filter(s=>s.mode==='online').length} أونلاين</span>`:''}</td><td>${pill(st,k)}</td>
-      <td><div class="inline"><button class="btn sm ghost" data-act="preview" data-id="${o.id}">البيانات</button>${k!=='ok'?(is.bad.length?`<span class="tag bad" title="${esc(is.bad.join('، '))}">ناقصها بيانات</span>`:`<button class="btn sm primary" data-act="sendOne" data-id="${o.id}">${k==='warn'?'إرسال تحديث':'إرسال'}</button>`):''}</div></td></tr>`; }).join('')||'<tr><td colspan="5" class="meta">مفيش مواد بالفلتر ده.</td></tr>'}
+      return `<tr><td><b>${esc(co.code)}</b> · ${esc(co.name)}${k==='warn'?`<div class="meta" style="color:var(--warn)">${d.slice(0,3).map(esc).join('<br>')}${d.length>3?'<br>…':''}</div>`:''}</td><td>${esc(cohort(co.cohort).name)}</td><td class="num">${ss.filter(s=>s.mode!=='online').length}${ss.some(s=>s.mode==='online')?` <span class="meta">+ ${ss.filter(s=>s.mode==='online').length} أونلاين</span>`:''}</td><td>${pill(st,k)}</td><td>${allocCell(o)}</td>
+      <td><div class="inline"><button class="btn sm ghost" data-act="preview" data-id="${o.id}">البيانات</button>${k!=='ok'?(is.bad.length?`<span class="tag bad" title="${esc(is.bad.join('، '))}">ناقصها بيانات</span>`:`<button class="btn sm primary" data-act="sendOne" data-id="${o.id}">${k==='warn'?'إرسال تحديث':'إرسال'}</button>`):''}</div></td></tr>`; }).join('')||'<tr><td colspan="6" class="meta">مفيش مواد بالفلتر ده.</td></tr>'}
     </tbody></table></div>
     <section class="panel" aria-labelledby="h-pv"><h3 id="h-pv">البيانات اللي بتتبعت ${pv?'· '+esc(course(pv.courseId).code):''}</h3>
       ${pv?`<p class="hint" style="margin-top:-6px">ده شكل الرسالة اللي نظام القاعات بيستقبلها. مفاتيح الأدوات نفسها في النظامين.</p><pre class="json">${esc(JSON.stringify(payload(pv),null,2))}</pre><div class="inline" style="margin-top:8px"><button class="btn sm" data-act="copyJson" data-id="${pv.id}">نسخ</button></div>`:'<div class="empty">اختار مادة ودوس "البيانات" عشان تشوف الرسالة.</div>'}
@@ -464,6 +509,7 @@ function drawerOffering(o){
     <div class="inline"><label>الطلاب المسجلين <input type="number" min="1" style="width:100px" data-chg="students" data-id="${o.id}" value="${o.students}"></label><span class="hint">المصدر: إدخال يدوي (لحد ما يتحدد مصدر التسجيل، سؤال B1)</span></div>
     ${is.bad.length||is.warn.length?`<div class="issues">${is.bad.map(x=>`<div class="issue bad">${esc(x)}</div>`).join('')}${is.warn.map(x=>`<div class="issue warn">${esc(x)}</div>`).join('')}</div>`:'<div class="okbox">البيانات كاملة وجاهزة للإرسال.</div>'}
     ${k==='warn'&&d.length?`<div class="issue warn"><b>اتغير بعد آخر إرسال:</b><br>${d.map(esc).join('<br>')}</div>`:''}
+    ${o.offered&&o.sent?`<section><div class="sec-title">حالة التوزيع في نظام القاعات</div><div class="card">${!ROOMS?'<div class="meta">نظام القاعات لسه مافتحش. افتحه من نفس الموقع عشان الحالة توصل هنا.</div>':allocOf(o).list.map(({s,a})=>`<div class="grp" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${KINDS[s.kind]}${s.group!=='all'?' '+s.group:''}</b> <span class="meta">${a&&a.when?esc(a.when):''}${a&&a.room?' · '+esc(a.room)+' ('+esc(a.building)+')':''}</span></span>${a?pill(a.label,ALLOC_KIND[a.state]||'off'):'<span class="meta">لسه ماوصلش</span>'}</div>`).join('')}</div></section>`:''}
     ${Object.keys(co.sessions).map(kindBox).join('')}
     ${missingKinds.length?`<div class="inline">${missingKinds.map(x=>`<button class="btn sm" data-act="addKind" data-co="${co.id}" data-k="${x}">إضافة ${KINDS[x]}</button>`).join('')}</div>`:''}
     <div class="inline">${o.offered&&k!=='ok'?`<button class="btn primary" data-act="sendOne" data-id="${o.id}" ${is.bad.length?'disabled':''}>${k==='warn'?'إرسال تحديث لنظام القاعات':'إرسال لنظام القاعات'}</button>`:''}<button class="btn" data-act="previewGo" data-id="${o.id}">شوف البيانات</button>${o.offered?`<button class="btn danger" data-act="unoffer" data-id="${o.id}">إلغاء الطرح</button>`:''}</div>
@@ -482,12 +528,13 @@ function render(){
   root.innerHTML=`<div class="scrim" data-act="closeDrawer"></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-t">${drawerOffering(o)}</aside>`;
   root.dataset.key=o.id; if(same) $('#drawer-body').scrollTop=prev;
 }
+const _render=render; render=function(){ _render(); persist(); };
 function syncHash(){ const h=location.hash.slice(1); S.ui.view=NAV.some(([k])=>k===h)?h:'cohorts'; S.ui.drawer=null; render(); window.scrollTo(0,0); }
 
 /* ============ Actions ============ */
 const findOff=id=>S.offerings.find(o=>o.id===id);
 const ACT={
-  reset(){ const v=S.ui.view; boot(); S.ui.view=v; toast('رجعت البيانات التجريبية'); },
+  reset(){ const v=S.ui.view; store.del(SAVE_KEY); boot(true); S.ui.view=v; toast('رجعت البيانات التجريبية'); },
   cohort(d){ S.ui.cohort=d.id; },
   openOff(d){ S.ui.drawer=d.id; },
   closeDrawer(){ S.ui.drawer=null; },
@@ -519,7 +566,7 @@ const ACT={
   async unoffer(d){
     const o=findOff(d.id); const co=course(o.courseId);
     const v=await ask({title:`إلغاء طرح ${co.name}`,body:`<p class="meta">${o.sent?'المادة اتبعتت لنظام القاعات قبل كده، وهيتبعت له إلغاء عشان يفضّي أماكنها.':'المادة ماتبعتتش لنظام القاعات.'}</p>`,fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'إلغاء الطرح',danger:true});
-    if(!v) return; o.offered=false; if(o.sent){ o.sent=null; o.sentAt=null; } render(); toast('اتلغى الطرح');
+    if(!v) return; o.offered=false; if(o.sent){ o.sent=null; o.sentAt=null; o.cancelledSent=true; S.lastSendAt=stamp(); } render(); toast(o.cancelledSent?'اتلغى الطرح واتبعت الإلغاء لنظام القاعات':'اتلغى الطرح');
   },
   async offerFromCatalog(){
     const cands=S.courses.filter(c=>c.cohort===S.ui.cohort&&c.semester===S.term.semester&&(!off(c.id)||!off(c.id).offered));
