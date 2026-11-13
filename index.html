@@ -118,6 +118,8 @@ tbody tr.click{cursor:pointer} tbody tr.click:hover{background:var(--surface-2)}
 .chip-cls.st-exc{border-inline-start-color:var(--accent)}
 .chip-cls.st-shift{border-inline-start-color:var(--accent);background:var(--accent-soft)}
 .chip-cls.st-pending{border-inline-start-color:var(--accent);border-style:dashed;border-inline-start-style:solid;background:var(--accent-soft)}
+.cell-add{display:block;width:100%;border:1px dashed var(--line);background:transparent;border-radius:7px;color:var(--muted);font-size:12px;padding:2px 6px;cursor:pointer;opacity:.55}
+.cell-add:hover,.cell-add:focus-visible{opacity:1;border-color:var(--accent);color:var(--accent)}
 .chip-cls.st-ghost{border-inline-start-color:var(--off);background:transparent;opacity:.75}
 .chip-cls.st-ghost b{text-decoration:line-through}
 .grid tr.today td.day{color:var(--accent)}
@@ -315,7 +317,7 @@ const room=id=>find(S.rooms,id), course=id=>find(S.courses,id), cls=id=>find(S.c
 const nid=p=>p+(++S.seq);
 const fmtDate=d=>{ if(!d) return ''; const [y,m,dd]=d.split('-').map(Number); return `${dd} ${MONTHS[m-1]}`; };
 const stamp=()=>{ const n=new Date(); return `اليوم ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; };
-const when=c=>c.day==null?'بدون موعد':`${DAYS[c.day]} ${SLOTS[c.slot]}`;
+const when=c=>c.day==null?'بدون موعد':c.date?`${dateLabel(c.date)} ${SLOTS[c.slot]}${c.until&&c.until!==c.date?` · كل أسبوع لحد ${dateLabel(c.until)}`:''}`:`${DAYS[c.day]} ${SLOTS[c.slot]}`;
 function label(c){ if(c.exceptional) return c.title; const co=course(c.courseId); return `${co.name} — ${S.usage[c.kind]}${c.group!=='all'?' '+c.group:''}`; }
 function shortLabel(c){ if(c.exceptional) return c.title; const co=course(c.courseId); return `${co.code} ${S.usage[c.kind]}${c.group!=='all'?' '+c.group:''}`; }
 function log(action,details,reason=''){ S.log.unshift({at:stamp(),who:'موظف التوزيع',action,details,reason}); }
@@ -705,7 +707,7 @@ function renderRail(){
   const badges={dashboard:openN,requests:newReq};
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${S.term.name} · موظف التوزيع</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بـ Course Management</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">Course Management مش متصل</span><span>افتح <a href="course-management/">إدارة المواد</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 17:00</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بـ Course Management</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">Course Management مش متصل</span><span>افتح <a href="course-management/">إدارة المواد</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 17:30</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -854,12 +856,14 @@ function viewCalendar(){
       const c=cls(o.classId); if(o.type==='cancel') stats.cancelled++; else stats.gone++;
       return `<button class="chip-cls st-ghost" data-act="openClass" data-id="${c.id}"><b>${esc(shortLabel(c))}</b><span>${o.type==='cancel'?'ملغية المرة دي':`اتنقلت لـ ${dateLabel(o.newDate)} ${SLOTS[o.newSlot]}`}</span></button>`;
     });
-    return live.join('')+gone.join('');
+    const canAdd=date>S.today&&dayIdx(date)!==6;
+    return live.join('')+gone.join('')+(canAdd?`<button class="cell-add" data-act="manualBook" data-date="${date}" data-slot="${s}" aria-label="حجز يدوي ${dateLabel(date)} ${SLOTS[s]}" title="حجز يدوي">+ حجز</button>`:'');
   };
   const body=dates.map(d=>`<tr class="${d===S.today?'today':''}"><td class="day">${dateLabel(d)}${d===S.today?'<div class="meta">النهارده</div>':''}</td>${SLOTS.map((_,si)=>`<td>${cell(d,si)}</td>`).join('')}</tr>`).join('');
   const weeks=Array.from({length:S.term.weeks},(_,i)=>addDays(S.term.start,i*7));
   const people=S.people.filter(p=>p.role!=='coordinator');
-  return `<div class="page-head"><div><h2>التقويم</h2><p>كل المحاضرات في الأسبوع اللي تختاره، ومعاها النقل والإلغاء اللي بيحصل مرة واحدة.</p></div>
+  return `<div class="page-head"><div><h2>التقويم</h2><p>كل المحاضرات في الأسبوع اللي تختاره، ومعاها النقل والإلغاء والحجوزات اليدوية. دوس "+ حجز" في أي خانة عشان تحجز فيها.</p></div>
+  <button class="btn primary" data-act="manualBook">حجز يدوي</button>
   <div class="week-nav"><button class="btn sm" data-act="week" data-d="-7" aria-label="الأسبوع اللي فات">‹ السابق</button><b>${dateLabel(dates[0])} – ${dateLabel(dates[5])}</b><button class="btn sm" data-act="week" data-d="7" aria-label="الأسبوع الجاي">التالي ›</button><button class="btn sm ${ws===cur?'primary':''}" data-act="week" data-d="0">الأسبوع الحالي</button></div></div>
   <div class="filters">
     <label class="meta" style="display:flex;align-items:center;gap:6px">الأسبوع<select data-chg="calWeek" aria-label="اختار الأسبوع">${weeks.map((w,i)=>`<option value="${w}"${w===ws?' selected':''}>الأسبوع ${i+1} · ${dateLabel(w)}${w===cur?' (الحالي)':''}</option>`).join('')}${weekNo<1||weekNo>S.term.weeks?`<option value="${ws}" selected>خارج الترم · ${dateLabel(ws)}</option>`:''}</select></label>
@@ -875,6 +879,27 @@ function viewCalendar(){
   <tbody>${body}</tbody></table></div>`;
 }
 
+/* Manual booking: a one-off (or weekly until a date) exceptional booking; rooms ranked for that date and slot. */
+function bookOptions(c){
+  const all=S.rooms.map(r=>{
+    const blocked=roomBlockedOn(r,c.date);
+    if(blocked) return {r,e:{ok:false,reason:blocked}};
+    if(c.until&&c.until!==c.date){ const b2=roomBlockedOn(r,c.until); if(b2) return {r,e:{ok:false,reason:b2+' (في آخر الفترة)'}}; }
+    return {r,e:evaluate(r,c,{ignoreStatus:true})};
+  });
+  return {ok:all.filter(x=>x.e.ok).sort((a,b)=>b.e.score-a.e.score),no:all.filter(x=>!x.e.ok)};
+}
+function drawerBook(c){
+  const o=bookOptions(c);
+  return `<div class="drawer-head"><div><div class="meta">حجز يدوي · ${esc(S.usage[c.kind])}</div><h3 id="dr-t">${esc(c.title)}</h3><div class="meta" style="margin-top:4px">${when(c)} · ${c.students} فرد · ${esc(c.organizer)}</div></div><button class="btn ghost" data-act="closeDrawer" aria-label="إغلاق">إغلاق</button></div>
+  <div class="drawer-body" id="drawer-body">
+    ${c.reqs.length?`<div class="meta">المتطلبات: ${c.reqs.map(q=>EQ[q.eq]+(q.mandatory?' (إلزامي)':'')).join('، ')}</div>`:''}
+    ${c.note?`<div class="infobox">${esc(c.note)}</div>`:''}
+    <section><div class="sec-title">الأماكن المتاحة والمناسبة (${o.ok.length})</div><div class="card">${o.ok.length?o.ok.map(({r,e})=>`<div class="cand"><div><b>${esc(r.name)}</b> <span class="meta">${roomWhere(r)}</span><div class="meta">السعة ${e.cap.min}–${e.cap.max} · المطلوب ${e.need} · ${scoreHtml(e.score)}</div><div>${evalTags(e)||'<span class="tag">كل المتطلبات موجودة</span>'}</div></div><button class="btn sm primary" data-act="confirmBook" data-r="${r.id}">احجز هنا</button></div>`).join(''):'<div class="empty">مفيش مكان مناسب فاضي في الموعد ده. جرّب فترة أو يوم تاني.</div>'}</div>
+    <details style="margin-top:8px"><summary>أماكن مستبعدة وسبب الاستبعاد (${o.no.length})</summary><div class="card" style="margin-top:6px">${o.no.map(({r,e})=>`<div class="cand"><div><b>${esc(r.name)}</b><div class="meta">${esc(e.reason)}</div></div></div>`).join('')}</div></details></section>
+    <div class="row-actions"><button class="btn" data-act="manualBook" data-edit="1">تعديل بيانات الحجز</button></div>
+  </div>`;
+}
 function drawerShift(q){
   const doc=person(q.from); const done=q.classIds.every(id=>oneoffFor(id,q.targetDate));
   const optRow=(c,o,isPref)=>`<div class="opt"><div><b>${dateLabel(o.date)} · ${SLOTS[o.slot]}</b>${isPref?' '+pill('مفضل للدكتور','acc'):''}
@@ -1102,10 +1127,10 @@ function render(){
   const dr=S.ui.drawer; const root=$('#drawer-root');
   const prev=$('#drawer-body')?.scrollTop||0;
   if(!dr){ root.innerHTML=''; return; }
-  const obj=dr.type==='class'?cls(dr.id):dr.type==='shift'?find(S.requests,dr.id):room(dr.id);
+  const obj=dr.type==='class'?cls(dr.id):dr.type==='shift'?find(S.requests,dr.id):dr.type==='book'?S.ui.bookDraft:room(dr.id);
   if(!obj){ S.ui.drawer=null; root.innerHTML=''; return; }
   const wasOpen=root.dataset.key===dr.type+dr.id;
-  root.innerHTML=`<div class="scrim" data-act="closeDrawer"></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-t">${dr.type==='class'?drawerClass(obj):dr.type==='shift'?drawerShift(obj):drawerRoom(obj)}</aside>`;
+  root.innerHTML=`<div class="scrim" data-act="closeDrawer"></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-t">${dr.type==='class'?drawerClass(obj):dr.type==='shift'?drawerShift(obj):dr.type==='book'?drawerBook(obj):drawerRoom(obj)}</aside>`;
   root.dataset.key=dr.type+dr.id;
   if(wasOpen) $('#drawer-body').scrollTop=prev;
 }
@@ -1214,6 +1239,42 @@ const ACT={
     if(!f.text.trim()){ toast('اكتب سبب النقل'); return; }
     S.requests.unshift({id:nid('q'),type:'shift',from:f.doctorId,date:'12 نوفمبر',status:'new',targetDate:f.date,classIds:ids,preferred:f.prefDate?{date:f.prefDate,slot:Number(f.prefSlot)}:null,text:f.text.trim()});
     S.ui.newShift=null; S.ui.reqFilter='new'; toast('الطلب وصل لموظف التوزيع');
+  },
+  async manualBook(d){
+    const prev=d.edit&&S.ui.bookDraft;
+    const date=prev?prev.date:(d.date||addDays(S.today,1));
+    const v=await ask({title:prev?'تعديل الحجز اليدوي':'حجز يدوي',wide:true,fields:[
+      {id:'title',label:'عنوان الحجز',required:true,value:prev?prev.title:'',full:true},
+      {id:'kind',label:'النوع',type:'select',value:prev?prev.kind:'exam',options:Object.entries(S.usage)},
+      {id:'organizer',label:'الجهة أو المسؤول',required:true,value:prev?prev.organizer:''},
+      {id:'date',label:'التاريخ',type:'date',required:true,value:date},
+      {id:'slot',label:'الفترة',type:'select',value:String(prev?prev.slot:(d.slot??0)),options:SLOTS.map((t,i)=>[String(i),t])},
+      {id:'students',label:'العدد',type:'number',required:true,value:String(prev?prev.students:30)},
+      {id:'repeat',label:'التكرار',type:'select',value:prev&&prev.until!==prev.date?'weekly':'once',options:[['once','مرة واحدة'],['weekly','كل أسبوع في نفس اليوم والفترة']]},
+      {id:'until',label:'لحد تاريخ',type:'date',required:true,value:prev&&prev.until?prev.until:addDays(date,21),showIf:['repeat','weekly']},
+      {id:'eq',label:'المتطلبات (المختار هنا إلزامي)',type:'checks',options:Object.entries(EQ).map(([k,t])=>[k,t,prev?prev.reqs.some(q=>q.eq===k):false])},
+      {id:'note',label:'ملاحظات',type:'textarea',value:prev?prev.note:''}
+    ],ok:'عرض الأماكن المتاحة'});
+    if(!v) return;
+    if(v.date<=S.today){ toast('اختار تاريخ بعد النهارده'); return; }
+    if(dayIdx(v.date)===6){ toast('الجمعة إجازة. اختار يوم تاني.'); return; }
+    const until=v.repeat==='weekly'?v.until:v.date;
+    if(until<v.date){ toast('تاريخ النهاية لازم يكون بعد تاريخ البداية'); return; }
+    const wOf=x=>Math.floor(daysBetween(S.term.start,x)/7)+1;
+    const w1=wOf(v.date), w2=wOf(until);
+    if(w1<1||w2>S.term.weeks){ toast(`التاريخ لازم يكون جوه الترم (${S.term.weeks} أسبوع من ${dateLabel(S.term.start)})`); return; }
+    S.ui.bookDraft={id:'draft',exceptional:true,manual:true,title:v.title,organizer:v.organizer,kind:v.kind,students:Math.max(1,Number(v.students)||1),day:dayIdx(v.date),slot:Number(v.slot),date:v.date,until,weeks:[w1,w2],roomId:null,mode:'inperson',status:'active',group:'all',instructor:null,cohort:null,reqs:v.eq.map(e=>({eq:e,mandatory:true,reason:'مطلوب في الحجز'})),overrides:{},note:v.note};
+    S.ui.drawer={type:'book',id:'draft'}; $('#drawer-root').dataset.key=''; render();
+  },
+  confirmBook(d){
+    const draft=S.ui.bookDraft; if(!draft) return;
+    const r=room(d.r); const opt=bookOptions(draft).ok.find(x=>x.r.id===r.id);
+    if(!opt){ toast('المكان ده مبقاش متاح. اختار مكان تاني.'); return; }
+    const c={...draft,id:nid('k'),roomId:r.id}; S.classes.push(c);
+    log('حجز يدوي',`${c.title} (${S.usage[c.kind]}) · ${when(c)} · ${r.name} · ${c.students} فرد · ${c.organizer}`,c.note||'');
+    notifyPeople(c,`${c.title}: ${when(c)} في ${r.name} (${building(r.building).name})`);
+    S.ui.bookDraft=null; S.ui.drawer=null; S.ui.calWeek=weekStart(c.date);
+    toast(`اتحجز ${r.name} لـ ${c.title}`);
   },
   week(d){ S.ui.calWeek=Number(d.d)===0?weekStart(S.today):addDays(S.ui.calWeek,Number(d.d)); },
   async reject(d){
