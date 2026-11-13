@@ -39,3 +39,7 @@
 ## المرجع
 
 الأسئلة المفتوحة والافتراضات اللي اتبنى عليها النموذج موجودة في مستند المتطلبات.
+
+## نظام إدارة المواد الدراسية
+
+prototype منفصل في فولدر [`course-management`](course-management/): https://moatasemkamal.github.io/Team4/course-management/
