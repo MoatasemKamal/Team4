@@ -170,8 +170,8 @@ const PTYPE={bachelor:'بكالوريوس (فرق)',credit:'ساعات معتم�
 const ORD=['الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة'];
 /* Same equipment keys as the rooms system; the rooms system owns this list and sends updates. */
 let EQ={projector:'بروجكتور',mic:'مايك وسماعات',ac:'تكييف',internet:'إنترنت',smartboard:'سبورة ذكية',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',excel:'Microsoft Excel',spss:'SPSS',accsoft:'برنامج محاسبي (ERP)'};
-const NAV=[['offer','المواد حسب البرنامج والفرقة'],['catalog','كتالوج المواد'],['master','البيانات الأساسية'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
-const VERSION='النسخة: 14 نوفمبر 14:00';
+const NAV=[['offer','المواد حسب البرنامج والفرقة'],['catalog','تفاصيل المواد'],['master','البيانات الأساسية'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
+const VERSION='النسخة: 14 نوفمبر 15:00';
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
 function seed(){
@@ -536,7 +536,7 @@ function viewOffer(){
 function viewCatalog(){
   const f=S.ui.catFilter;
   const list=S.courses.filter(c=>(!f.dept||c.dept===f.dept)&&(!f.q||c.name.includes(f.q)||c.code.toLowerCase().includes(f.q.toLowerCase())));
-  return `<div class="page-head"><div><h2>كتالوج المواد</h2><p>كل مواد اللائحة في ${esc(S.faculty.name)}: القسم المالك، والساعات، وخطة التدريس. المادة الواحدة ممكن تتطرح لأكتر من برنامج.</p></div><button class="btn primary" data-act="newCourse">مادة جديدة</button></div>
+  return `<div class="page-head"><div><h2>تفاصيل المواد</h2><p>كل مواد اللائحة في ${esc(S.faculty.name)}: القسم المالك، والساعات، وخطة التدريس. المادة الواحدة ممكن تتطرح لأكتر من برنامج.</p></div><button class="btn primary" data-act="newCourse">مادة جديدة</button></div>
   <div class="filters">
     <input type="text" data-chg="cat" data-k="q" value="${esc(f.q)}" placeholder="بحث بالاسم أو الكود" aria-label="بحث">
     <select data-chg="cat" data-k="dept" aria-label="القسم"><option value="">كل الأقسام</option>${S.depts.map(d=>`<option value="${d.id}"${f.dept===d.id?' selected':''}>${esc(d.name)}</option>`).join('')}</select>
@@ -782,7 +782,7 @@ const ACT={
   addReq(d){ const co=course(d.co); const e=$(`#add-${d.co}-${d.k}`).value; if(!e) return; (co.reqs[d.k]=co.reqs[d.k]||[]).push({eq:e,mandatory:false,reason:''}); },
   addKind(d){ const co=course(d.co); co.sessions[d.k]={hours:2,perWeek:1,count:d.k==='lecture'?12:10,startWeek:d.k==='lecture'?1:3}; co.reqs[d.k]=co.reqs[d.k]||[]; },
   async newCourse(){
-    const v=await ask({title:'مادة جديدة في الكتالوج',wide:true,fields:[
+    const v=await ask({title:'مادة جديدة',wide:true,fields:[
       {id:'code',label:'الكود',required:true},{id:'name',label:'الاسم',required:true},
       {id:'dept',label:'القسم المالك',type:'select',options:S.depts.map(d=>[d.id,d.name]),value:'bus'},
       {id:'semester',label:'الفصل',type:'select',options:[['1','الأول'],['2','الثاني']],value:String(S.term.semester)},
@@ -794,7 +794,7 @@ const ACT={
     if(S.courses.some(c=>c.code.toLowerCase()===v.code.toLowerCase())){ toast(`الكود ${v.code} موجود بالفعل`); return; }
     const sessions={}, reqs={}; for(const k of v.kinds){ sessions[k]={hours:2,perWeek:1,count:Math.max(1,Number(k==='lecture'?v.lectures:v.others)||10),startWeek:k==='lecture'?1:3}; reqs[k]=[]; }
     S.courses.push({id:nid('c'),facultyId:S.faculty.id,code:v.code,name:v.name,dept:v.dept,semester:Number(v.semester),credits:Number(v.credits)||3,sessions,reqs});
-    render(); toast('اتضافت للكتالوج. اطرحها من زرار "طرح لجمهور".');
+    render(); toast('اتضافت المادة. اطرحها من زرار "طرح لجمهور".');
   },
   async addDept(){ const v=await ask({title:'قسم جديد',fields:[{id:'name',label:'اسم القسم',required:true}],ok:'إضافة'}); if(!v) return; S.depts.push({id:nid('dp'),name:v.name,facultyId:S.faculty.id}); render(); },
   async addMajor(){ const v=await ask({title:'شعبة جديدة',fields:[{id:'name',label:'اسم الشعبة',required:true}],ok:'إضافة'}); if(!v) return; S.majors.push({id:nid('mj'),name:v.name}); render(); toast('اتضافت. فعّلها في البرامج اللي فيها الشعبة دي.'); },
