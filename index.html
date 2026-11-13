@@ -215,7 +215,7 @@ let EQ=DEF_EQ, ROOMKIND=DEF_ROOMKIND; // bound to the master data in state (bind
 const MODE={inperson:'حضوري',online:'أونلاين',hybrid:'هجين'};
 const STATE_LABEL={available:['متاح','ok'],partial:['متاح جزئياً','warn'],maintenance:['صيانة','bad'],closed:['مقفول','off']};
 const REQ_TYPE={cm:'طلب توزيع',shift:'نقل محاضرات',online:'تحويل أونلاين',booking:'طلب حجز',maintenance:'بلاغ عطل',exceptional:'حجز استثنائي',cancel_once:'إلغاء مرة واحدة'};
-const NAV=[['dashboard','لوحة المتابعة'],['requests','الطلبات'],['schedule','الجدول الأسبوعي'],['calendar','التقويم'],['rooms','القاعات والمعامل'],['courses','المواد والمتطلبات'],['preferred','القاعات المفضلة'],['master','البيانات الأساسية'],['log','سجل التغييرات'],['settings','الإعدادات']];
+const NAV=[['dashboard','لوحة المتابعة'],['requests','الطلبات'],['schedule','الجدول الأسبوعي'],['calendar','التقويم'],['rooms','القاعات والمعامل'],['preferred','القاعات المفضلة'],['master','البيانات الأساسية'],['log','سجل التغييرات'],['settings','الإعدادات']];
 
 /* ============ Seed data (sample) ============ */
 function seed(){
@@ -707,7 +707,7 @@ function renderRail(){
   const badges={dashboard:openN,requests:newReq};
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${S.term.name} · موظف التوزيع</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بـ Course Management</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">Course Management مش متصل</span><span>افتح <a href="course-management/">إدارة المواد</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 17:30</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بـ Course Management</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">Course Management مش متصل</span><span>افتح <a href="course-management/">إدارة المواد</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<a class="btn sm" href="course-management/" style="text-align:center;text-decoration:none">المواد والمتطلبات ← إدارة المواد الدراسية</a><span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 18:00</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -936,20 +936,6 @@ function viewRooms(){
   </tbody></table></div><p class="hint">* السعة محسوبة على عدد الأجهزة الشغالة.</p>`;
 }
 
-function viewCourses(){
-  return `<div class="page-head"><div><h2>المواد والمتطلبات</h2><p>متطلبات كل مادة لكل نوع حصة. الإلزامي لازم يكون ليه سبب مكتوب.</p></div></div>
-  <div class="stack">${S.courses.map(co=>{
-    const kinds=[...new Set([...Object.keys(co.reqs),...S.classes.filter(c=>c.courseId===co.id).map(c=>c.kind)])];
-    const classes=S.classes.filter(c=>c.courseId===co.id);
-    return `<section class="panel course" aria-label="${esc(co.name)}"><div class="card-head"><div><h3 style="font-size:17px">${esc(co.code)} · ${esc(co.name)}</h3><div class="meta">قسم ${esc(co.dept)} · ${esc(cohort(co.cohort).name)}</div></div>
-      ${co.managed?`<span class="meta">الطلاب: <b class="num">${co.students}</b> · ${pill('من Course Management','acc')}</span>`:`<label class="meta" style="display:flex;align-items:center;gap:8px">الطلاب المسجلين في الترم <input type="number" min="1" style="width:90px" data-chg="students" data-id="${co.id}" value="${co.students}"></label>`}</div>
-      ${co.managed?'<div class="infobox">بيانات المادة ومتطلباتها بتيجي من Course Management، والتعديل بيتعمل هناك. تقدر تشيل الإلزام لحصة معينة من تفاصيل الحصة.</div>':''}
-      <div class="course-kinds">${kinds.map(k=>co.managed?`<div class="kind-box"><h5>${esc(S.usage[k])}</h5>${(co.reqs[k]||[]).map(q=>`<div class="reqline"><span>${EQ[q.eq]}</span>${q.mandatory?pill('إلزامي','bad'):pill('اختياري','off')}<span></span>${q.mandatory&&q.reason?`<small class="meta" style="grid-column:1/-1">${esc(q.reason)}</small>`:''}</div>`).join('')||'<div class="meta">مفيش متطلبات.</div>'}</div>`:`<div class="kind-box"><h5>${esc(S.usage[k])}</h5>${(co.reqs[k]||[]).map((q,i)=>`<div class="reqline"><span>${EQ[q.eq]}</span><button class="toggle ${q.mandatory?'on':''}" data-act="toggleMand" data-co="${co.id}" data-k="${k}" data-i="${i}" aria-pressed="${q.mandatory}">${q.mandatory?'إلزامي':'اختياري'}</button><button class="btn sm ghost" data-act="delReq" data-co="${co.id}" data-k="${k}" data-i="${i}" aria-label="حذف ${EQ[q.eq]}">حذف</button>${q.mandatory?`<input type="text" data-chg="reqReason" data-co="${co.id}" data-k="${k}" data-i="${i}" value="${esc(q.reason)}" placeholder="سبب الإلزام" aria-label="سبب إلزام ${EQ[q.eq]}">`:''}</div>`).join('')||'<div class="meta">مفيش متطلبات.</div>'}
-        <div class="row-actions" style="margin-top:8px"><select id="add-${co.id}-${k}" aria-label="متطلب جديد">${Object.entries(EQ).filter(([e])=>!(co.reqs[k]||[]).some(q=>q.eq===e)).map(([e,t])=>`<option value="${e}">${t}</option>`).join('')}</select><button class="btn sm" data-act="addReq" data-co="${co.id}" data-k="${k}">إضافة</button></div></div>`).join('')}</div>
-      <div><div class="sec-title">الحصص في الترم الحالي</div><div class="row-actions">${classes.map(c=>`<button class="btn sm" data-act="openClass" data-id="${c.id}">${esc(S.usage[c.kind])}${c.group!=='all'?' '+c.group:''} · ${when(c)} · ${CLS_STATUS[classStatus(c)][0]}</button>`).join('')}</div></div>
-    </section>`;}).join('')}</div>`;
-}
-
 function viewPreferred(){
   const p=S.ui.pref; const doctors=S.people.filter(x=>x.role==='doctor');
   const dCourses=[...new Set(S.classes.filter(c=>c.instructor===p.doctorId&&c.courseId).map(c=>c.courseId))].map(course);
@@ -1122,7 +1108,7 @@ function drawerRoom(r){
 function render(){
   renderRail();
   const v=S.ui.view;
-  const html={dashboard:viewDashboard,requests:viewRequests,schedule:viewSchedule,calendar:viewCalendar,rooms:viewRooms,courses:viewCourses,preferred:viewPreferred,master:viewMaster,log:viewLog,settings:viewSettings}[v]||viewDashboard;
+  const html={dashboard:viewDashboard,requests:viewRequests,schedule:viewSchedule,calendar:viewCalendar,rooms:viewRooms,preferred:viewPreferred,master:viewMaster,log:viewLog,settings:viewSettings}[v]||viewDashboard;
   $('#main').innerHTML=html();
   const dr=S.ui.drawer; const root=$('#drawer-root');
   const prev=$('#drawer-body')?.scrollTop||0;
@@ -1320,16 +1306,6 @@ const ACT={
   },
   addCap(d){ const r=room(d.id); const k=$('#addcap-'+r.id).value; if(!k) return; r.caps[k]=[1,r.seats]; log('إضافة سعة',`${r.name}: ${S.usage[k]} 1–${r.seats}`); freedCheckRoomAll(r.id,`${r.name} بقت مهيأة لـ${S.usage[k]}`); },
   delCap(d){ const r=room(d.id); delete r.caps[d.k]; log('حذف سعة',`${r.name}: ${S.usage[d.k]}`); affectedNotice(r,unfitInRoom(r),`مبقتش مهيأة لـ${S.usage[d.k]}`); },
-  async toggleMand(d){
-    const q=course(d.co).reqs[d.k][d.i];
-    if(!q.mandatory){
-      const v=await ask({title:`${EQ[q.eq]} إلزامي`,body:'<p class="meta">الإلزامي لازم يتكتب سببه عشان موظف التوزيع يقدر يراجعه.</p>',fields:[{id:'reason',label:'سبب الإلزام',type:'textarea',required:true,value:q.reason}],ok:'حفظ'});
-      if(!v) return; q.mandatory=true; q.reason=v.reason;
-    } else q.mandatory=false;
-    log('تعديل متطلب',`${course(d.co).name} (${S.usage[d.k]}): ${EQ[q.eq]} ← ${q.mandatory?'إلزامي':'اختياري'}`,q.mandatory?q.reason:''); render();
-  },
-  delReq(d){ const co=course(d.co); const q=co.reqs[d.k].splice(Number(d.i),1)[0]; log('حذف متطلب',`${co.name} (${S.usage[d.k]}): ${EQ[q.eq]}`); },
-  addReq(d){ const co=course(d.co); const e=$(`#add-${d.co}-${d.k}`).value; if(!e) return; (co.reqs[d.k]=co.reqs[d.k]||[]).push({eq:e,mandatory:false,reason:''}); log('إضافة متطلب',`${co.name} (${S.usage[d.k]}): ${EQ[e]} اختياري`); },
   prefCheck(){ S.ui.pref.result=prefCheck(); },
   async prefSave(){
     const p=S.ui.pref; const res=prefCheck(); p.result=res;
@@ -1421,13 +1397,7 @@ const CHG={
   rfilter(t){ S.ui.roomFilters[t.dataset.k]=t.value; },
   pref(t){ S.ui.pref[t.dataset.k]=t.value; if(t.dataset.k==='doctorId') S.ui.pref.courseId=''; S.ui.pref.result=null; },
   buffer(t){ S.settings.buffer=Math.max(0,Math.min(50,Number(t.value)||0)); log('إعدادات',`نسبة الزيادة الاحتياطية ← ${S.settings.buffer}%`); },
-  students(t){
-    const co=course(t.dataset.id); const n=Math.max(1,Number(t.value)||1); const old=co.students; co.students=n;
-    S.classes.filter(c=>c.courseId===co.id&&c.group==='all').forEach(c=>c.students=n);
-    log('تعديل عدد الطلاب',`${co.name}: ${old} ← ${n}`);
-    const bad=S.classes.filter(c=>c.courseId===co.id&&c.status==='active'&&c.roomId&&!currentFit(c).ok);
-    if(bad.length){ affectedNotice(room(bad[0].roomId),bad,`عدد طلاب ${co.name} زاد عن السعة`); toast('العدد الجديد أكبر من سعة المكان الحالي. شوف لوحة المتابعة.'); }
-  },
+
   calWeek(t){ S.ui.calWeek=t.value; },
   calDate(t){ if(t.value) S.ui.calWeek=weekStart(t.value); },
   calF(t){ S.ui.calFilters[t.dataset.k]=t.value; },
@@ -1440,7 +1410,6 @@ const CHG={
     c.day=d; c.slot=sl; if(c.roomId){ c.roomId=null; } log('تحديد موعد',`${label(c)} ← ${when(c)}`);
     if(c.mode==='online') notifyPeople(c,`${label(c)}: الموعد ${when(c)} (أونلاين)`); else toast('اتحدد الموعد. اختار المكان من الاقتراحات.');
   },
-  reqReason(t){ const q=course(t.dataset.co).reqs[t.dataset.k][t.dataset.i]; q.reason=t.value; },
   mode(t){
     const c=cls(t.dataset.id); const old=c.mode; c.mode=t.value;
     log('تغيير طريقة التدريس',`${label(c)}: ${MODE[old]} ← ${MODE[c.mode]}`); notifyPeople(c,`${label(c)} بقت ${MODE[c.mode]}`);
