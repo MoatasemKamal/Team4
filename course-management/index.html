@@ -368,7 +368,7 @@ function allocOf(o){
   const need=list.filter(x=>x.s.mode!=='online');
   return {list,done:need.filter(x=>x.a&&x.a.state==='scheduled').length,need:need.length,known:list.some(x=>x.a)};
 }
-const ALLOC_KIND={scheduled:'ok',online:'off',waiting:'bad',unscheduled:'bad',issue:'warn',cancelled:'off',pending:'acc',rejected:'bad'};
+const ALLOC_KIND={scheduled:'ok',online:'off',waiting:'bad',unscheduled:'bad',issue:'warn',cancelled:'off',pending:'acc',rejected:'bad',release:'warn'};
 function allocCell(o){
   if(!o.offered||!o.sent) return '<span class="meta">—</span>';
   const a=allocOf(o);
@@ -418,7 +418,7 @@ function renderRail(){
   const pending=S.offerings.filter(o=>o.offered&&sendState(o)[1]!=='ok').length;
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة المواد الدراسية</h1><small>${S.term.name} · الأقسام وشئون الطلاب</small></div>`+
     NAV.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${k==='outbox'&&pending?`<span class="badge">${pending}</span>`:''}</a>`).join('')+
-    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 17:00</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${ROOMS?`<span class="pill ok">متصل بنظام القاعات</span><span>آخر حالة: ${esc(ROOMS.at)}</span>`:`<span class="pill off">نظام القاعات مش متصل</span><span>افتح <a href="../">نظام القاعات</a> من نفس الموقع عشان النظامين يتربطوا.</span>`}<span>نموذج أولي ببيانات تجريبية متخزنة في المتصفح ده.</span><span class="num">النسخة: 13 نوفمبر 18:30</span><button class="btn sm" data-act="reset">رجّع البيانات التجريبية</button></div>`;
 }
 
 function sessChips(o){
