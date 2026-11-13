@@ -165,13 +165,13 @@ html.modal-open,html.modal-open body{overflow:hidden}
 const KINDS={lecture:'محاضرة',section:'سكشن',lab:'معمل'};
 const KINDS_PL={lecture:'محاضرات',section:'سكاشن',lab:'معامل'};
 const SUB={section:'S',lab:'M'};               // group id letters: L1 = lecture group 1, L1-S2 = its section 2, L1-M1 = its lab 1
-const MODE={inperson:'حضوري',online:'أونلاين',hybrid:'هجين'};
+const MODE={inperson:'حضوري',online:'أونلاين',hybrid:'حضوري - أونلاين'};
 const PTYPE={bachelor:'بكالوريوس (فرق)',credit:'ساعات معتمدة',external:'انتساب',pg:'دراسات عليا'};
 const ORD=['الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة'];
 /* Same equipment keys as the rooms system; the rooms system owns this list and sends updates. */
 let EQ={projector:'بروجكتور',mic:'مايك وسماعات',ac:'تكييف',internet:'إنترنت',smartboard:'سبورة ذكية',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',excel:'Microsoft Excel',spss:'SPSS',accsoft:'برنامج محاسبي (ERP)'};
 const NAV=[['offer','المواد حسب البرنامج والفرقة'],['catalog','كتالوج المواد'],['master','البيانات الأساسية'],['load','أعباء التدريس'],['outbox','الإرسال لنظام القاعات'],['settings','الإعدادات']];
-const VERSION='النسخة: 14 نوفمبر 13:00';
+const VERSION='النسخة: 14 نوفمبر 14:00';
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
 function seed(){
@@ -378,7 +378,7 @@ function issuesOf(o){
   for(const k of Object.keys(co.sessions)) for(const q of co.reqs[k]||[]) if(q.mandatory&&!q.reason) bad.push(`${EQ[q.eq]} إلزامي في ال${KINDS[k]} من غير سبب`);
   const sum=o.audiences.reduce((a,id)=>a+(cohort(id)?.students||0),0);
   if(sum&&o.students!==sum) warn.push(`عدد الطلاب (${o.students}) مختلف عن مجموع الجمهور (${sum})`);
-  for(const k of Object.keys(co.sessions)) if(modeOf(o,k)==='hybrid') warn.push(`ال${KINDS[k]} هجين: نظام القاعات هيضيف كاميرا ومايك ونت كمتطلبات إلزامية`);
+  for(const k of Object.keys(co.sessions)) if(modeOf(o,k)==='hybrid') warn.push(`ال${KINDS[k]} حضوري - أونلاين: نظام القاعات هيضيف كاميرا ومايك ونت كمتطلبات إلزامية`);
   for(const p of new Set(ss.map(s=>s.instructor).filter(Boolean))) if(overloaded(p)) warn.push(`${person(p).name} فوق الحد الأقصى للعبء`);
   return {bad,warn};
 }
@@ -550,7 +550,7 @@ function viewCatalog(){
   </tbody></table></div>`;
 }
 /* ============ Master data (البيانات الأساسية) ============ */
-const MTABS=[['faculty','الجامعة والكليات'],['depts','الأقسام العلمية'],['programs','البرامج ومجموعات الطلاب'],['majors','الشعب'],['staff','أعضاء هيئة التدريس'],['ranks','الدرجات الوظيفية'],['terms','الفصول الدراسية'],['equipment','الأدوات'],['fixed','أنواع الحصص وطرق التدريس']];
+const MTABS=[['faculty','الجامعة والكليات'],['depts','الأقسام العلمية'],['programs','البرامج ومجموعات الطلاب'],['majors','الشعب'],['terms','الفصول الدراسية'],['equipment','الأدوات'],['fixed','أنواع الحصص وطرق التدريس']];
 const rankOf=p=>p&&p.rank?find(S.ranks,p.rank):null;
 const maxFor=p=>{ const r=rankOf(p); return r?r.maxLoad:S.settings.maxLoad[p.role]; };
 const staffUse=pid=>loadOf(pid).items.length;
@@ -576,26 +576,12 @@ function viewMaster(){
       <div class="meta">${p.levels?`${p.levels} ${p.type==='credit'?'مستويات':'فرق'}`:'بدون فرق'}${p.majorsFrom?` · الشعب من ${levelName(p,p.majorsFrom)}: ${p.majors.map(m=>esc(major(m).name)).join('، ')}`:''} · التدريس الافتراضي: ${MODE[p.defaultMode]}</div>
       <details style="margin-top:8px"${p.id==='ar'?' open':''}><summary>مجموعات الطلاب (${pc(p.id).length}) · ${pc(p.id).reduce((a,c)=>a+c.students,0)} طالب</summary><div class="tbl-wrap" style="margin-top:6px"><table><thead><tr><th>مجموعة الطلاب</th><th>عدد الطلاب</th></tr></thead><tbody>${pc(p.id).map(c=>`<tr><td>${esc(cohortName(c,false))}</td><td><input type="number" min="0" style="width:100px" data-chg="cohortStudents" data-id="${c.id}" value="${c.students}" aria-label="عدد طلاب ${esc(cohortName(c))}"></td></tr>`).join('')}</tbody></table></div></details></div>`).join('')}
       <button class="btn primary" data-act="addProgram">إضافة برنامج</button>`; }
-  if(tab==='staff') body=tbl(['الاسم','القسم والدرجة',''],S.people.map(p=>{ const n=staffUse(p.id), r=rankOf(p);
-    return mRow(esc(p.name),`${esc(dept(p.dept)?.name||'—')} · ${esc(r?r.name:(p.role==='doctor'?'دكتور':'معيد'))} · ${n?n+' حصة':'مش متعيّن في حصص'}`,`<button class="btn sm" data-act="editStaff" data-id="${p.id}">تعديل</button>${delBtn('delStaff',p.id,n,'متعيّن في حصص، شيله منها الأول')}`); }).join(''),`<button class="btn primary" data-act="addStaff">إضافة عضو هيئة تدريس</button>`);
-  if(tab==='ranks') body=tbl(['الدرجة','النوع والعبء',''],S.ranks.map(r=>{ const n=S.people.filter(p=>p.rank===r.id).length;
-    return mRow(esc(r.name),`${r.kind==='doctor'?'عضو هيئة تدريس':'هيئة معاونة'} · أقصى عبء ${r.maxLoad} ساعة في الأسبوع · ${n} شخص`,`<button class="btn sm" data-act="editRank" data-id="${r.id}">تعديل</button>${delBtn('delRank',r.id,n,'فيه أشخاص بالدرجة دي')}`); }).join(''),`<button class="btn primary" data-act="addRank">إضافة درجة</button><span class="hint">العبء الأقصى بيتحسب حسب الدرجة (افتراض لحد إجابة سؤال G3).</span>`);
   if(tab==='terms') body=tbl(['الفصل','الفترة',''],S.terms.map(t=>mRow(`${esc(t.name)}${t.id===S.termId?' '+pill('الحالي','ok'):''}`,`${['','الفصل الأول','الفصل الثاني','الفصل الصيفي'][t.semester]} · يبدأ ${esc(t.start)} · ${t.weeks} أسبوع`,`<button class="btn sm" data-act="editTerm" data-id="${t.id}">تعديل</button>${t.id===S.termId?'':`<button class="btn sm" data-act="setTerm" data-id="${t.id}">خليه الحالي</button>`}${delBtn('delTerm',t.id,t.id===S.termId,'الترم الحالي مينفعش يتحذف')}`)).join(''),`<button class="btn primary" data-act="addTerm">إضافة فصل دراسي</button>`);
   if(tab==='equipment') body=`${tbl(['الأداة','مطلوبة في',''],Object.entries(EQ).map(([k,t])=>{ const n=S.courses.filter(c=>Object.values(c.reqs).some(l=>l.some(q=>q.eq===k))).length; return mRow(esc(t),n?`${n} مادة`:'مش مطلوبة في مواد',''); }).join(''),'')}<p class="hint">قائمة الأدوات بيملكها نظام القاعات (من البيانات الأساسية هناك)، وبتوصل هنا تلقائي لما النظامين يتفتحوا من نفس الموقع.</p>`;
-  if(tab==='fixed') body=`<div class="cols"><section class="panel"><h3>أنواع الحصص</h3>${Object.values(KINDS).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">ثابتة لأن نظام القاعات بيستقبل الحصص بيها.</p></section><section class="panel"><h3>طرق التدريس</h3>${Object.values(MODE).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">الهجين بيضيف كاميرا ومايك ونت كمتطلبات إلزامية في نظام القاعات.</p></section></div>`;
-  return `<div class="page-head"><div><h2>البيانات الأساسية</h2><p>${esc(S.university)} ← ${esc(S.faculty.name)}. القوائم اللي باقي النظام بيختار منها. الحذف مسموح بس للي مش مستخدم.</p></div></div>${tabs}${body}`;
+  if(tab==='fixed') body=`<div class="cols"><section class="panel"><h3>أنواع الحصص</h3>${Object.values(KINDS).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">ثابتة لأن نظام القاعات بيستقبل الحصص بيها.</p></section><section class="panel"><h3>طرق التدريس</h3>${Object.values(MODE).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">"حضوري - أونلاين" بيضيف كاميرا ومايك ونت كمتطلبات إلزامية في نظام القاعات.</p></section></div>`;
+  return `<div class="page-head"><div><h2>البيانات الأساسية</h2><p>${esc(S.university)} ← ${esc(S.faculty.name)}. القوائم اللي باقي النظام بيختار منها. الحذف مسموح بس للي مش مستخدم.</p></div></div>${tabs}<p class="hint" style="margin-top:-6px">أعضاء هيئة التدريس ودرجاتهم الوظيفية بيتعرفوا في module شئون أعضاء هيئة التدريس، والنظام ده بيقراهم بس عشان التعيين على الحصص وحساب العبء.</p>${body}`;
 }
 async function nameDialog(title,value=''){ const v=await ask({title,fields:[{id:'name',label:'الاسم',required:true,value}],ok:'حفظ'}); return v&&v.name; }
-async function staffDialog(p){
-  const v=await ask({title:p?`تعديل ${p.name}`:'عضو هيئة تدريس جديد',fields:[{id:'name',label:'الاسم',required:true,value:p?.name||''},{id:'rank',label:'الدرجة',type:'select',value:p?.rank||'lect',options:S.ranks.map(r=>[r.id,r.name])},{id:'dept',label:'القسم',type:'select',value:p?.dept||S.depts[0].id,options:S.depts.map(d=>[d.id,d.name])}],ok:'حفظ'});
-  if(!v) return; const role=find(S.ranks,v.rank).kind;
-  if(p) Object.assign(p,{name:v.name,rank:v.rank,dept:v.dept,role}); else S.people.push({id:nid('s'),facultyId:S.faculty.id,name:v.name,rank:v.rank,dept:v.dept,role});
-}
-async function rankDialog(r){
-  const v=await ask({title:r?`تعديل ${r.name}`:'درجة وظيفية جديدة',fields:[{id:'name',label:'الاسم',required:true,value:r?.name||''},{id:'kind',label:'النوع',type:'select',value:r?.kind||'doctor',options:[['doctor','عضو هيئة تدريس'],['ta','هيئة معاونة']]},{id:'maxLoad',label:'أقصى عبء أسبوعي (ساعة)',type:'number',value:String(r?.maxLoad??12),min:1}],ok:'حفظ'});
-  if(!v) return; const data={name:v.name,kind:v.kind,maxLoad:Math.max(1,Number(v.maxLoad)||12)};
-  if(r){ Object.assign(r,data); S.people.filter(p=>p.rank===r.id).forEach(p=>p.role=r.kind); } else S.ranks.push({id:nid('rk'),...data});
-}
 async function termDialog(t){
   const v=await ask({title:t?`تعديل ${t.name}`:'فصل دراسي جديد',fields:[{id:'name',label:'الاسم',required:true,value:t?.name||''},{id:'semester',label:'النوع',type:'select',value:String(t?.semester||1),options:[['1','الفصل الأول'],['2','الفصل الثاني'],['3','الفصل الصيفي']]},{id:'start',label:'تاريخ البداية',type:'date',required:true,value:t?.start||''},{id:'weeks',label:'عدد الأسابيع',type:'number',value:String(t?.weeks||16),min:1}],ok:'حفظ'});
   if(!v) return; const data={name:v.name,semester:Number(v.semester),start:v.start,weeks:Math.max(1,Number(v.weeks)||16)};
@@ -610,12 +596,6 @@ const MACT={
   delDept(d){ S.depts=S.depts.filter(x=>x.id!==d.id); },
   async editMajor(d){ const x=major(d.id); const n=await nameDialog('تعديل الشعبة',x.name); if(n) x.name=n; },
   delMajor(d){ S.majors=S.majors.filter(x=>x.id!==d.id); },
-  async addStaff(){ await staffDialog(null); },
-  async editStaff(d){ await staffDialog(person(d.id)); },
-  delStaff(d){ S.people=S.people.filter(x=>x.id!==d.id); },
-  async addRank(){ await rankDialog(null); },
-  async editRank(d){ await rankDialog(find(S.ranks,d.id)); },
-  delRank(d){ S.ranks=S.ranks.filter(x=>x.id!==d.id); },
   async addTerm(){ await termDialog(null); },
   async editTerm(d){ await termDialog(find(S.terms,d.id)); },
   setTerm(d){ S.termId=d.id; syncTerm(); toast(`الترم الحالي بقى ${S.term.name}`); },
@@ -624,7 +604,7 @@ const MACT={
 
 function viewLoad(){
   const rows=S.people.map(p=>({p,...loadOf(p.id),max:maxFor(p)})).sort((a,b)=>b.hours/b.max-a.hours/a.max);
-  return `<div class="page-head"><div><h2>أعباء التدريس</h2><p>ساعات كل عضو هيئة تدريس في الأسبوع من كل البرامج، مقابل الحد الأقصى لدرجته الوظيفية (من البيانات الأساسية).</p></div></div>
+  return `<div class="page-head"><div><h2>أعباء التدريس</h2><p>ساعات كل عضو هيئة تدريس في الأسبوع من كل البرامج، مقابل الحد الأقصى لدرجته الوظيفية. الأسماء والدرجات جاية من module شئون أعضاء هيئة التدريس.</p></div></div>
   <div class="tbl-wrap"><table><thead><tr><th>الاسم</th><th>القسم</th><th>الدرجة</th><th>الساعات / الأسبوع</th><th>بيدرّس</th></tr></thead><tbody>
   ${rows.map(r=>{ const pct=Math.min(100,Math.round(r.hours/r.max*100)); const c=r.hours>r.max?'var(--bad)':r.hours>=r.max*.85?'var(--warn)':'var(--accent)';
     return `<tr><td><b>${esc(r.p.name)}</b></td><td>${esc(dept(r.p.dept)?.name||'—')}</td><td>${esc(rankOf(r.p)?.name||(r.p.role==='doctor'?'دكتور':'معيد'))}</td><td><div class="load"><i style="--w:${pct}%;--c:${c}"></i><span class="num"${r.hours>r.max?' style="color:var(--bad);font-weight:600"':''}>${r.hours} / ${r.max}</span></div></td>
@@ -654,7 +634,7 @@ function viewSettings(){
   <div class="cols"><section class="panel"><h3>الحد الأقصى لحجم المجموعة</h3>
     <div class="inline"><label>محاضرة <input type="number" min="20" max="2000" style="width:90px" data-chg="setting" data-k="maxGroup.lecture" value="${s.maxGroup.lecture}"></label><label>سكشن <input type="number" min="5" max="200" style="width:90px" data-chg="setting" data-k="maxGroup.section" value="${s.maxGroup.section}"></label><label>معمل <input type="number" min="5" max="200" style="width:90px" data-chg="setting" data-k="maxGroup.lab" value="${s.maxGroup.lab}"></label></div>
     <p class="hint">عدد مجموعات المحاضرة = الطلاب ÷ حد المحاضرة. والسكاشن والمعامل بتتقسم جوه كل مجموعة محاضرة. تقدر تثبّت العدد يدوي في أي مادة.</p>
-    <p class="hint" style="margin-top:16px">الحد الأقصى للعبء بقى حسب الدرجة الوظيفية في <a href="#master">البيانات الأساسية</a>.</p>
+    <p class="hint" style="margin-top:16px">الحد الأقصى للعبء بيتحسب حسب الدرجة الوظيفية، ودي جاية من module شئون أعضاء هيئة التدريس.</p>
   </section>
   <section class="panel"><h3>الحدود مع نظام القاعات</h3>
     <p class="meta" style="margin-top:0">النظام ده مسؤول عن الهيكل الأكاديمي والمواد وطرحها ومجموعاتها ومحاضريها ومتطلباتها. نظام القاعات مسؤول عن الأماكن والمواعيد والتوزيع، والنظام هناك بيقترح والموظف بيأكد.</p>
