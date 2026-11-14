@@ -182,7 +182,7 @@ const NAV_GROUPS=[
   {t:'الإعداد',items:[['master','البيانات الأساسية'],['settings','الإعدادات']]}
 ];
 const NAV=NAV_GROUPS.flatMap(g=>g.items);
-const VERSION='النسخة: 14 نوفمبر 21:00';
+const VERSION='النسخة: 14 نوفمبر 23:00';
 const PTYPE_ITEM={core:'إجبارية',elective:'اختيارية'};
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
@@ -409,7 +409,7 @@ function sessionsOf(o){
 function payload(o){
   const co=course(o.courseId), p=progOf(o);
   return {
-    term:S.term.name, university:S.university, faculty:S.faculty, offeringId:o.id,
+    term:S.term.name, university:S.university, faculty:S.faculty, offeringId:o.id, ...(o.attempt>1?{attempt:o.attempt}:{}),
     course:{id:co.id,code:co.code,name:co.name,department:dept(co.dept).name,creditHours:co.credits},
     program:{id:p.id,code:p.code,name:p.name,type:p.type},
     audiences:o.audiences.map(id=>{ const c=cohort(id); return {id,name:cohortName(c),type:p.type,level:c.level,major:c.majorId?major(c.majorId).name:null}; }),
@@ -499,12 +499,13 @@ function allocOf(o){
   const need=list.filter(x=>x.s.mode!=='online');
   return {list,done:need.filter(x=>x.a&&x.a.state==='scheduled').length,need:need.length,known:list.some(x=>x.a)};
 }
-const ALLOC_KIND={scheduled:'ok',online:'off',waiting:'bad',unscheduled:'bad',issue:'warn',cancelled:'off',pending:'acc',rejected:'bad',release:'warn'};
+const ALLOC_KIND={scheduled:'ok',online:'off',waiting:'bad',unscheduled:'bad',issue:'warn',cancelled:'off',pending:'acc',rejected:'bad',returned:'bad',release:'warn'};
 function allocCell(o){
   if(!o.offered||!o.sent) return '<span class="meta">—</span>';
   if(!ROOMS) return '<span class="meta">بانتظار نظام القاعات</span>';
   const a=allocOf(o); if(!a.known) return '<span class="meta">لم تصل بعد</span>';
   const n=s=>a.list.filter(x=>x.a&&x.a.state===s).length;
+  if(n('returned')) return pill(`تعذّر توزيع ${n('returned')} حصة`,'bad');
   if(n('rejected')) return pill('رُفض طلب التوزيع','bad');
   if(n('release')) return pill('بانتظار تأكيد الموظف','warn');
   if(n('pending')) return pill(`${n('pending')} مقترح، بانتظار الاعتماد`,'acc');
@@ -830,6 +831,8 @@ function drawerOffering(o){
       <div class="inline" style="margin-top:8px"><button class="btn sm" data-act="editAud" data-id="${o.id}">تعديل مجموعات الطلاب</button><label>الطلاب <input type="number" min="1" style="width:100px" data-chg="students" data-id="${o.id}" value="${o.students}"></label>${o.students!==sum?`<button class="btn sm ghost" data-act="useSum" data-id="${o.id}">اجعله مجموع طلاب المجموعات (${sum})</button>`:'<span class="hint">= مجموع طلاب المجموعات</span>'}</div></section>
     ${is.bad.length||is.warn.length?`<div class="issues">${is.bad.map(x=>`<div class="issue bad">${esc(x)}</div>`).join('')}${is.warn.map(x=>`<div class="issue warn">${esc(x)}</div>`).join('')}</div>`:'<div class="okbox">البيانات كاملة وجاهزة للإرسال.</div>'}
     ${k==='warn'&&d.length?`<div class="issue warn"><b>تغيّر بعد آخر إرسال:</b><br>${d.slice(0,12).map(esc).join('<br>')}${d.length>12?'<br>…':''}</div>`:''}
+    ${(()=>{ if(!o.offered||!o.sent||!ROOMS) return ''; const ret=allocOf(o).list.filter(x=>x.a&&x.a.state==='returned'); if(!ret.length) return '';
+      return `<div class="issue bad"><b>تعذّر توزيع ${ret.length} حصة في نظام القاعات.</b><br>${esc(ret[0].a.label.replace(/^تعذّر التوزيع: /,'السبب: '))}<br>القرار هنا: قسّم المجموعات، أو غيّر طريقة التدريس، أو عدّل الأسابيع، ثم أرسل التحديث. ${k==='ok'?`<button class="btn sm" data-act="resend" data-id="${o.id}" style="margin-top:6px">إعادة الإرسال كما هي</button>`:''}</div>`; })()}
     ${o.offered&&o.sent?`<section><div class="sec-title">حالة التوزيع في نظام القاعات</div><div class="card">${!ROOMS?'<div class="meta">لم يُفتح نظام القاعات بعد. افتحه من الموقع نفسه لتصل الحالة إلى هنا.</div>':allocOf(o).list.map(({s,a})=>`<div class="grp" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${KINDS[s.kind]} · ${esc(groupLabel(s.group,s.lg))}</b> <span class="meta">${a&&a.when?esc(a.when):''}${a&&a.room?' · '+esc(a.room)+' ('+esc(a.building)+')':''}</span></span>${a?pill(a.label,ALLOC_KIND[a.state]||'off'):'<span class="meta">لم تصل بعد</span>'}</div>`).join('')}</div></section>`:''}
     ${Object.keys(co.sessions).map(kindBox).join('')}
     ${missing.length?`<div class="inline">${missing.map(x=>`<button class="btn sm" data-act="addKind" data-co="${co.id}" data-k="${x}">إضافة ${KINDS[x]}</button>`).join('')}</div>`:''}
@@ -889,6 +892,7 @@ const ACT={
   preview(d){ S.ui.preview=d.id; },
   previewGo(d){ S.ui.preview=d.id; S.ui.drawer=null; location.hash='outbox'; },
   async copyJson(d){ try{ await navigator.clipboard.writeText(JSON.stringify(payload(findOff(d.id)),null,2)); toast('تم النسخ'); }catch(e){ toast('النسخ غير متاح هنا. حدّد النص وانسخه يدويًا.'); } },
+  resend(d){ const o=findOff(d.id); o.attempt=(o.attempt||1)+1; if(send(o)) toast('أُعيد الإرسال إلى نظام القاعات'); else toast('أكمل البيانات الناقصة أولًا'); },
   sendOne(d){ const o=findOff(d.id); const was=sendState(o)[1]; if(send(o)) toast(was==='warn'?'أُرسل التحديث إلى نظام القاعات':'أُرسلت إلى نظام القاعات'); else toast('أكمل البيانات الناقصة أولًا'); },
   sendSel(){
     const {ids}=selection();
