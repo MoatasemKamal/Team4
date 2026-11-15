@@ -182,7 +182,7 @@ const NAV_GROUPS=[
   {t:'الإعداد',items:[['master','البيانات الأساسية'],['settings','الإعدادات']]}
 ];
 const NAV=NAV_GROUPS.flatMap(g=>g.items);
-const VERSION='النسخة: 15 نوفمبر 12:00';
+const VERSION='النسخة: 15 نوفمبر 17:00';
 const PTYPE_ITEM={core:'إجبارية',elective:'اختيارية'};
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
@@ -191,7 +191,7 @@ function seed(){
   const SEC=(count=10,startWeek=3)=>({hours:2,perWeek:1,count,startWeek});
   const R=(eq,mandatory=false,reason='')=>({eq,mandatory,reason});
   const st={
-    seq:300, version:5,
+    seq:300, version:6,
     university:'جامعة الإسكندرية',
     /* One faculty in use today; every department, program, course and staff member carries facultyId so more faculties can join later. */
     faculties:[{id:'fba',name:'كلية إدارة الأعمال',active:true}],
@@ -857,10 +857,10 @@ function syncHash(){ const h=location.hash.slice(1); S.ui.view=NAV.some(([k])=>k
 const freshUI=()=>({view:'offer',planProg:'ar',sel:{program:'ar',level:1,major:''},drawer:null,catFilter:{dept:'',q:''},outFilter:'all',preview:null});
 function boot(fresh){
   const saved=fresh?null:store.get(SAVE_KEY);
-  if(saved&&saved.version===5){ S={...saved,ui:freshUI()}; return; }
+  if(saved&&saved.version===6){ S={...saved,ui:freshUI()}; return; }
   S=seed(); S.ui=freshUI();
-  for(const o of S.offerings) if(o._send){ send(o); o.sentAt=o.id==='of_acc101_ar'?'19 سبتمبر':'10 نوفمبر'; delete o._send; }
-  S.lastSendAt='10 نوفمبر';
+  for(const o of S.offerings) if(o._send){ send(o); o.sentAt=o.id==='of_acc101_ar'?'15 سبتمبر':'10 سبتمبر'; delete o._send; }
+  S.lastSendAt='15 سبتمبر';
   // Sample of "changed after sending": student registration grew after BUS201 was sent.
   const b=S.offerings.find(o=>o.id==='of_bus201_ar'); b.students=520;
 }

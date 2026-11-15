@@ -260,8 +260,8 @@ function seed(){
   const ok='ok';
   const R_=(eq,mandatory=false,reason='')=>({eq,mandatory,reason});
   const st={
-    seq:400, version:2,
-    today:'2026-11-12',
+    seq:400, version:3,
+    today:'2026-09-17', /* two days before the term starts (Sat 19 Sep): the timetable is out, last requests arrive */
     university:'جامعة الإسكندرية', faculty:{id:'fba',name:'كلية إدارة الأعمال'},
     settings:{buffer:5,shiftWindow:14,minNotice:2},
     term:{name:'الفصل الأول 2026/2027',start:'2026-09-19',weeks:16},
@@ -285,7 +285,7 @@ function seed(){
     rooms:[
       R('r1','مدرج 1','amphi','b2','الأرضي',600,{projector:ok,mic:ok,ac:ok,camera:ok,internet:ok},{lecture:[200,600],exam:[100,300],conference:[100,600]}),
       R('r2','مدرج 2','amphi','b2','الأرضي',500,{projector:ok,mic:ok,ac:ok},{lecture:[150,500],exam:[80,250]}),
-      R('r3','مدرج 3','amphi','b2','الأول',400,{projector:ok,mic:ok,ac:ok},{lecture:[120,400],exam:[60,200]},{status:'maintenance',maintenance:{from:'2026-11-05',to:'2026-11-25',note:'تغيير وحدات التكييف'}}),
+      R('r3','مدرج 3','amphi','b2','الأول',400,{projector:ok,mic:ok,ac:ok},{lecture:[120,400],exam:[60,200]},{status:'maintenance',maintenance:{from:'2026-09-10',to:'2026-09-30',note:'تغيير وحدات التكييف'}}),
       R('r4','مدرج 4','amphi','b1','الأرضي',300,{mic:ok,ac:ok},{lecture:[100,300],exam:[50,150]}),
       R('r5','قاعة 101','hall','b1','الأول',120,{projector:ok,ac:ok},{lecture:[40,120],section:[20,60],exam:[20,60]}),
       R('r6','قاعة 102','hall','b1','الأول',100,{projector:ok},{lecture:[40,100],section:[20,60],exam:[20,50]}),
@@ -332,18 +332,18 @@ function seed(){
       {id:'pf2',doctorId:'d2',roomId:'r2',courseId:'bus305',rank:2,reason:''}
     ],
     requests:[
-      {id:'q6',type:'shift',from:'d4',date:'12 نوفمبر',status:'new',targetDate:'2026-11-17',classIds:['k3','k4'],preferred:{date:'2026-11-19',slot:0},text:'يشارك عدد كبير من طلاب الفرقة الثانية في ماراثون خارج الجامعة يوم الثلاثاء، لذا قررت نقل محاضرات اليوم كله.'},
-      {id:'q1',type:'online',from:'d1',date:'10 نوفمبر',status:'new',classId:'k5',scope:'term',text:'ستُدرَّس المجموعة الأولى أونلاين بقية الترم بسبب سفري إلى مؤتمر علمي.'},
-      {id:'q3',type:'maintenance',from:'m3',date:'11 نوفمبر',status:'new',roomId:'r10',devicesBroken:2,text:'جهازان في معمل الحاسب 1 لا يعملان (رقم 7 و12).'},
-      {id:'q4',type:'exceptional',from:'p1',date:'11 نوفمبر',status:'new',text:'مناقشة رسالة ماجستير، والحضور نحو 25 فردًا.',payload:{title:'مناقشة رسالة ماجستير — قسم المحاسبة',organizer:'إدارة الدراسات العليا',kind:'defense',students:25,day:5,slot:2,reqs:[{eq:'projector',mandatory:true,reason:'عرض الرسالة'}]}},
-      {id:'q5',type:'cancel_once',from:'d7',date:'11 نوفمبر',status:'new',classId:'k7',when:'الأحد 15 نوفمبر',onDate:'2026-11-15',text:'حضور اجتماع مجلس الكلية في الموعد نفسه، وستُعوَّض المحاضرة لاحقًا.'}
+      {id:'q6',type:'shift',from:'d4',date:'17 سبتمبر',status:'new',targetDate:'2026-09-22',classIds:['k3','k4'],preferred:{date:'2026-09-24',slot:0},text:'يشارك عدد كبير من طلاب الفرقة الثانية في ماراثون خارج الجامعة يوم الثلاثاء، لذا قررت نقل محاضرات اليوم كله.'},
+      {id:'q1',type:'online',from:'d1',date:'15 سبتمبر',status:'new',classId:'k5',scope:'term',text:'ستُدرَّس المجموعة الأولى أونلاين بقية الترم بسبب سفري إلى مؤتمر علمي.'},
+      {id:'q3',type:'maintenance',from:'m3',date:'16 سبتمبر',status:'new',roomId:'r10',devicesBroken:2,text:'جهازان في معمل الحاسب 1 لا يعملان (رقم 7 و12).'},
+      {id:'q4',type:'exceptional',from:'p1',date:'16 سبتمبر',status:'new',text:'مناقشة رسالة ماجستير، والحضور نحو 25 فردًا.',payload:{title:'مناقشة رسالة ماجستير — قسم المحاسبة',organizer:'إدارة الدراسات العليا',kind:'defense',students:25,day:5,slot:2,reqs:[{eq:'projector',mandatory:true,reason:'عرض الرسالة'}]}},
+      {id:'q5',type:'cancel_once',from:'d7',date:'16 سبتمبر',status:'new',classId:'k7',when:'الأحد 20 سبتمبر',onDate:'2026-09-20',text:'حضور اجتماع مجلس الكلية في الموعد نفسه، وستُعوَّض المحاضرة لاحقًا.'}
     ],
     notifications:[
-      {id:'n1',type:'info',open:true,at:'5 نوفمبر',title:'دخل مدرج 3 الصيانة',text:'تغيير وحدات التكييف حتى 25 نوفمبر. لم تكن عليه حجوزات عند دخوله الصيانة.'}
+      {id:'n1',type:'info',open:true,at:'10 سبتمبر',title:'دخل مدرج 3 الصيانة',text:'تغيير وحدات التكييف حتى 30 سبتمبر. لم تكن عليه حجوزات عند دخوله الصيانة.'}
     ],
     log:[
-      {at:'5 نوفمبر 10:12',who:'مسؤول الصيانة',action:'تغيير حالة مكان',details:'مدرج 3 ← صيانة (5–25 نوفمبر)',reason:'تغيير وحدات التكييف'},
-      {at:'3 نوفمبر 12:40',who:'موظف التوزيع',action:'قاعة مفضلة',details:'د. أحمد سالم ← مدرج 2 (كل المواد)',reason:''}
+      {at:'10 سبتمبر 10:12',who:'مسؤول الصيانة',action:'تغيير حالة مكان',details:'مدرج 3 ← صيانة (10–30 سبتمبر)',reason:'تغيير وحدات التكييف'},
+      {at:'8 سبتمبر 12:40',who:'موظف التوزيع',action:'قاعة مفضلة',details:'د. أحمد سالم ← مدرج 2 (كل المواد)',reason:''}
     ],
     cmSeen:{},cmRefs:{},cmLast:null,
     ui:{view:'requests',drawer:null,filters:{building:'',person:'',cohort:''},roomFilters:{building:'',kind:'',state:'',q:''},reqFilter:'new',calWeek:null,calFilters:{building:'',person:'',cohort:'',kind:''},newShift:null,pref:{doctorId:'d1',roomId:'r2',courseId:'',result:null}}
@@ -553,6 +553,8 @@ const addDays=(s,n)=>{ const d=parseD(s); d.setUTCDate(d.getUTCDate()+n); return
 const dayIdx=s=>(parseD(s).getUTCDay()+1)%7; // السبت=0 … الخميس=5، الجمعة=6
 const daysBetween=(a,b)=>Math.round((parseD(b)-parseD(a))/864e5);
 const weekStart=s=>addDays(s,-dayIdx(s));
+/* The calendar's "current week": today's week, or the term's first week when the term hasn't started yet. */
+const curWeek=()=>weekStart(S.today<S.term.start?S.term.start:S.today);
 function dateLabel(s){ const i=dayIdx(s), d=parseD(s); return `${i<6?DAYS[i]:'الجمعة'} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`; }
 function nextDateFor(dayI){ let d=addDays(S.today,1); while(dayIdx(d)!==dayI) d=addDays(d,1); return d; }
 /* Every session actually happening on a date+slot: weekly ones not moved away, plus ones moved in. */
@@ -715,7 +717,7 @@ function seedCMRequest(){
   const p=JSON.parse(JSON.stringify(SEED_CM_ACC101)), oid=p.offeringId;
   applyOffering(oid,p); S.cmSeen[oid]=JSON.stringify(SEED_CM_ACC101);
   S.notifications=S.notifications.filter(n=>!(n.type==='cm'&&String(n.title||'').startsWith(p.course.code)));
-  const q=S.requests.find(x=>x.type==='cm'&&x.offering===oid); if(q) q.date='19 سبتمبر 09:00';
+  const q=S.requests.find(x=>x.type==='cm'&&x.offering===oid); if(q) q.date='15 سبتمبر 09:00';
 }
 function syncFromCM(){
   const bus=store.get(BUS_CM); if(!bus||!bus.offerings) return false;
@@ -805,7 +807,7 @@ function renderRail(){
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${esc((S.university||'جامعة الإسكندرية')+' · '+((S.faculty&&S.faculty.name)||''))}<br>${S.term.name} · موظف التوزيع</small></div>`+
     `<nav aria-label="القائمة" style="display:contents">`+NAV_GROUPS.map(g=>`<div class="nav-group" role="presentation">${g.t}</div>`+g.items.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')).join('')+
     `<a class="nav ext" href="course-management/"><span>إدارة المواد الدراسية</span><span aria-hidden="true">↖</span></a></nav>`+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 16:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 17:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -999,8 +1001,8 @@ function newShiftForm(){
 }
 
 function viewCalendar(){
-  if(!S.ui.calWeek) S.ui.calWeek=weekStart(S.today);
-  const ws=S.ui.calWeek, cur=weekStart(S.today), f=S.ui.calFilters;
+  if(!S.ui.calWeek) S.ui.calWeek=curWeek();
+  const ws=S.ui.calWeek, cur=curWeek(), f=S.ui.calFilters;
   const dates=DAYS.map((_,i)=>addDays(ws,i));
   const weekNo=Math.floor(daysBetween(S.term.start,ws)/7)+1;
   const match=c=>(!f.person||c.instructor===f.person)&&(!f.cohort||audOf(c).includes(f.cohort))&&(!f.kind||c.kind===f.kind);
@@ -1414,7 +1416,7 @@ const ACT={
     const f=S.ui.newShift; const ids=Object.keys(f.picks).filter(k=>f.picks[k]);
     if(!ids.length){ toast('اختر محاضرة واحدة على الأقل'); return; }
     if(!f.text.trim()){ toast('أدخل سبب النقل'); return; }
-    S.requests.unshift({id:nid('q'),type:'shift',from:f.doctorId,date:'12 نوفمبر',status:'new',targetDate:f.date,classIds:ids,preferred:f.prefDate?{date:f.prefDate,slot:Number(f.prefSlot)}:null,text:f.text.trim()});
+    S.requests.unshift({id:nid('q'),type:'shift',from:f.doctorId,date:stamp(),status:'new',targetDate:f.date,classIds:ids,preferred:f.prefDate?{date:f.prefDate,slot:Number(f.prefSlot)}:null,text:f.text.trim()});
     S.ui.newShift=null; S.ui.reqFilter='new'; toast('وصل الطلب إلى موظف التوزيع');
   },
   async manualBook(d){
@@ -1453,7 +1455,7 @@ const ACT={
     S.ui.bookDraft=null; S.ui.drawer=null; S.ui.calWeek=weekStart(c.date);
     toast(`حُجز ${r.name} لـ ${c.title}`);
   },
-  week(d){ S.ui.calWeek=Number(d.d)===0?weekStart(S.today):addDays(S.ui.calWeek,Number(d.d)); },
+  week(d){ S.ui.calWeek=Number(d.d)===0?curWeek():addDays(S.ui.calWeek,Number(d.d)); },
   /* Course Management requests are never "rejected": the course is decided. The officer can only say allocation
      wasn't possible, with a reason, and Course Management decides what to change (split groups, mode, weeks) and resends. */
   async returnCM(d){
@@ -1476,8 +1478,8 @@ const ACT={
     const r=room(d.id);
     const v=await ask({title:`حالة ${r.name}`,fields:[
       {id:'status',label:'الحالة',type:'select',value:r.status,options:[['available','متاح'],['maintenance','صيانة'],['closed','مغلق إداريًا']]},
-      {id:'from',label:'من (للصيانة)',type:'date',value:r.maintenance?.from||'2026-11-11'},
-      {id:'to',label:'حتى (متوقع)',type:'date',value:r.maintenance?.to||'2026-11-18'},
+      {id:'from',label:'من (للصيانة)',type:'date',value:r.maintenance?.from||S.today},
+      {id:'to',label:'حتى (متوقع)',type:'date',value:r.maintenance?.to||addDays(S.today,7)},
       {id:'note',label:'السبب',type:'textarea',required:true,value:r.maintenance?.note||''}],ok:'حفظ'});
     if(!v) return;
     const was=roomState(r);
@@ -1645,7 +1647,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('input',e=>{ const t=e.target.closest('[data-inp]'); if(t&&S.ui.newShift) S.ui.newShift[t.dataset.k]=t.value; });
 document.addEventListener('change',e=>{ const t=e.target.closest('[data-chg]'); if(!t) return; CHG[t.dataset.chg](t); render(); });
 window.addEventListener('hashchange',syncHash);
-(function(){ const saved=store.get(SAVE_KEY); if(saved&&saved.rooms&&saved.version===2) S={...saved,ui:S.ui}; /* demo wording fix for data saved before 14 Nov */ (S.requests||[]).forEach(q=>{ if(q.id==='q5'&&/ظرف عائلي/.test(q.text||'')) q.text='حضور اجتماع مجلس الكلية في الموعد نفسه، وستُعوَّض المحاضرة لاحقًا.'; }); bindMaster(); if(!S.classes.some(c=>c.cmOffering==='of_acc101_ar')) seedCMRequest(); syncFromCM(); })();
+(function(){ const saved=store.get(SAVE_KEY); if(saved&&saved.rooms&&saved.version===3) S={...saved,ui:S.ui}; /* demo wording fix for data saved before 14 Nov */ (S.requests||[]).forEach(q=>{ if(q.id==='q5'&&/ظرف عائلي/.test(q.text||'')) q.text='حضور اجتماع مجلس الكلية في الموعد نفسه، وستُعوَّض المحاضرة لاحقًا.'; }); bindMaster(); if(!S.classes.some(c=>c.cmOffering==='of_acc101_ar')) seedCMRequest(); syncFromCM(); })();
 syncHash();
 </script>
 </body>
