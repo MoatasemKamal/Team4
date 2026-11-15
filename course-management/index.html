@@ -191,7 +191,7 @@ function seed(){
   const SEC=(count=10,startWeek=3)=>({hours:2,perWeek:1,count,startWeek});
   const R=(eq,mandatory=false,reason='')=>({eq,mandatory,reason});
   const st={
-    seq:300, version:6,
+    seq:300, version:7,
     university:'جامعة الإسكندرية',
     /* One faculty in use today; every department, program, course and staff member carries facultyId so more faculties can join later. */
     faculties:[{id:'fba',name:'كلية إدارة الأعمال',active:true}],
@@ -857,7 +857,7 @@ function syncHash(){ const h=location.hash.slice(1); S.ui.view=NAV.some(([k])=>k
 const freshUI=()=>({view:'offer',planProg:'ar',sel:{program:'ar',level:1,major:''},drawer:null,catFilter:{dept:'',q:''},outFilter:'all',preview:null});
 function boot(fresh){
   const saved=fresh?null:store.get(SAVE_KEY);
-  if(saved&&saved.version===6){ S={...saved,ui:freshUI()}; return; }
+  if(saved&&saved.version===7){ S={...saved,ui:freshUI()}; return; }
   S=seed(); S.ui=freshUI();
   for(const o of S.offerings) if(o._send){ send(o); o.sentAt=o.id==='of_acc101_ar'?'15 سبتمبر':'10 سبتمبر'; delete o._send; }
   S.lastSendAt='15 سبتمبر';

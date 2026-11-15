@@ -263,7 +263,7 @@ function seed(){
   const ok='ok';
   const R_=(eq,mandatory=false,reason='')=>({eq,mandatory,reason});
   const st={
-    seq:400, version:3,
+    seq:400, version:4,
     today:'2026-09-17', /* two days before the term starts (Sat 19 Sep): the timetable is out, last requests arrive */
     university:'جامعة الإسكندرية', faculty:{id:'fba',name:'كلية إدارة الأعمال'},
     settings:{buffer:5,shiftWindow:14,minNotice:2},
@@ -1669,7 +1669,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('input',e=>{ const t=e.target.closest('[data-inp]'); if(t&&S.ui.newShift) S.ui.newShift[t.dataset.k]=t.value; });
 document.addEventListener('change',e=>{ const t=e.target.closest('[data-chg]'); if(!t) return; CHG[t.dataset.chg](t); render(); });
 window.addEventListener('hashchange',syncHash);
-(function(){ const saved=store.get(SAVE_KEY); if(saved&&saved.rooms&&saved.version===3) S={...saved,ui:S.ui}; /* demo wording fix for data saved before 14 Nov */ (S.requests||[]).forEach(q=>{ if(q.id==='q5'&&/ظرف عائلي/.test(q.text||'')) q.text='حضور اجتماع مجلس الكلية في الموعد نفسه، وستُعوَّض المحاضرة لاحقًا.'; }); bindMaster(); if(!S.classes.some(c=>c.cmOffering==='of_acc101_ar')) seedCMRequest(); syncFromCM(); })();
+(function(){ const saved=store.get(SAVE_KEY); if(saved&&saved.rooms&&saved.version===4) S={...saved,ui:S.ui}; /* demo wording fix for data saved before 14 Nov */ (S.requests||[]).forEach(q=>{ if(q.id==='q5'&&/ظرف عائلي/.test(q.text||'')) q.text='حضور اجتماع مجلس الكلية في الموعد نفسه، وستُعوَّض المحاضرة لاحقًا.'; }); bindMaster(); if(!S.classes.some(c=>c.cmOffering==='of_acc101_ar')) seedCMRequest(); syncFromCM(); })();
 syncHash();
 </script>
 </body>
