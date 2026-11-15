@@ -796,7 +796,7 @@ function renderRail(){
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${esc((S.university||'جامعة الإسكندرية')+' · '+((S.faculty&&S.faculty.name)||''))}<br>${S.term.name} · موظف التوزيع</small></div>`+
     `<nav aria-label="القائمة" style="display:contents">`+NAV_GROUPS.map(g=>`<div class="nav-group" role="presentation">${g.t}</div>`+g.items.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')).join('')+
     `<a class="nav ext" href="course-management/"><span>إدارة المواد الدراسية</span><span aria-hidden="true">↖</span></a></nav>`+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 13:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 14:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -1000,7 +1000,7 @@ function viewCalendar(){
     const di=dayIdx(date);
     const gone=S.oneoffs.filter(o=>{ const c=cls(o.classId); return o.date===date&&c.day===di&&c.slot===s&&match(c)&&inB(c.roomId); }).map(o=>{
       const c=cls(o.classId); if(o.type==='cancel') stats.cancelled++; else stats.gone++;
-      return `<button class="chip-cls st-ghost" data-act="openClass" data-id="${c.id}"><b>${esc(shortLabel(c))}</b><span>${o.type==='cancel'?'ملغاة هذه المرة':`نُقلت إلى ${dateLabel(o.newDate)} ${SLOTS[o.newSlot]}`}</span></button>`;
+      return `<button class="chip-cls st-ghost" data-act="openClass" data-id="${c.id}" data-date="${date}"><b>${esc(shortLabel(c))}</b><span>${o.type==='cancel'?'ملغاة هذه المرة':`نُقلت إلى ${dateLabel(o.newDate)} ${SLOTS[o.newSlot]}`}</span></button>`;
     });
     const canAdd=date>S.today&&dayIdx(date)!==6;
     return live.join('')+gone.join('')+(canAdd?`<button class="cell-add" data-act="manualBook" data-date="${date}" data-slot="${s}" aria-label="حجز يدوي ${dateLabel(date)} ${SLOTS[s]}" title="حجز يدوي">+ حجز</button>`:'');
@@ -1192,6 +1192,24 @@ function viewSettings(){
 }
 
 /* ============ Drawers ============ */
+/* Opened from a cancelled/moved occurrence in the calendar: show what happened on that date only.
+   Weekly actions (move room, cancel for the term…) live in the weekly class view, one click away. */
+function drawerOccurrence(c,date){
+  const o=S.oneoffs.find(x=>x.classId===c.id&&x.date===date);
+  if(!o) return drawerClass(c);
+  const co=c.exceptional?null:course(c.courseId);
+  const what=o.type==='cancel'?`أُلغيت هذه المحاضرة يوم ${dateLabel(date)} فقط.`:`نُقلت هذه المحاضرة يوم ${dateLabel(date)} فقط إلى ${dateLabel(o.newDate)} ${SLOTS[o.newSlot]}${o.roomId?' في '+esc(room(o.roomId).name):''}.`;
+  return `<div class="drawer-head"><div><div class="meta">${c.exceptional?'حجز استثنائي':esc(co.code)}</div><h3 id="dr-t">${esc(label(c))}</h3><div style="margin-top:4px">${o.type==='cancel'?pill(`ملغاة ${dateLabel(date)}`,'off'):pill(`منقولة ${dateLabel(date)}`,'warn')}</div></div><button class="btn ghost" data-act="closeDrawer" aria-label="إغلاق">إغلاق</button></div>
+  <div class="drawer-body" id="drawer-body">
+    <div class="${o.type==='cancel'?'infobox':'warnbox'}"><b>${what}</b>${o.reason?`<br>السبب: ${esc(o.reason)}`:''}<br>${c.roomId&&c.mode!=='online'?`${esc(room(c.roomId).name)} متاح في هذا الموعد للحجز الاستثنائي فقط. `:''}باقي الأسابيع في موعدها المعتاد.</div>
+    <dl class="kv">
+      <dt>الموعد المعتاد</dt><dd>${when(c)}</dd>
+      <dt>المكان المعتاد</dt><dd>${c.mode==='online'?'أونلاين':c.roomId?esc(room(c.roomId).name):'—'}</dd>
+      ${c.exceptional?`<dt>الجهة</dt><dd>${esc(c.organizer)}</dd>`:`<dt>المحاضر</dt><dd>${esc(person(c.instructor).name)}</dd><dt>الطلاب</dt><dd>${esc(audName(c))} · ${esc(groupTxt(c))}</dd>`}
+    </dl>
+    <div class="row-actions"><button class="btn sm" data-act="openClass" data-id="${c.id}">عرض الحصة الأسبوعية وإدارتها</button></div>
+  </div>`;
+}
 function drawerClass(c){
   const st=classStatus(c); const co=c.exceptional?null:course(c.courseId);
   const fit=currentFit(c); const conf=conflictsOf(c); const reqs=reqsOf(c);
@@ -1262,9 +1280,9 @@ function render(){
   if(!dr){ root.innerHTML=''; return; }
   const obj=dr.type==='class'?cls(dr.id):dr.type==='shift'?find(S.requests,dr.id):dr.type==='book'?S.ui.bookDraft:room(dr.id);
   if(!obj){ S.ui.drawer=null; root.innerHTML=''; return; }
-  const wasOpen=root.dataset.key===dr.type+dr.id;
-  root.innerHTML=`<div class="scrim" data-act="closeDrawer"></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-t">${dr.type==='class'?drawerClass(obj):dr.type==='shift'?drawerShift(obj):dr.type==='book'?drawerBook(obj):drawerRoom(obj)}</aside>`;
-  root.dataset.key=dr.type+dr.id;
+  const wasOpen=root.dataset.key===dr.type+dr.id+(dr.date||'');
+  root.innerHTML=`<div class="scrim" data-act="closeDrawer"></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-t">${dr.type==='class'?(dr.date?drawerOccurrence(obj,dr.date):drawerClass(obj)):dr.type==='shift'?drawerShift(obj):dr.type==='book'?drawerBook(obj):drawerRoom(obj)}</aside>`;
+  root.dataset.key=dr.type+dr.id+(dr.date||'');
   if(wasOpen) $('#drawer-body').scrollTop=prev;
 }
 const _render=render; render=function(){ _render(); persist(); };
@@ -1274,7 +1292,7 @@ function syncHash(){ const h=location.hash.slice(1); S.ui.view=NAV.some(([k])=>k
 /* ============ Actions ============ */
 const ACT={
   reset(){ store.del(SAVE_KEY); S=seed(); bindMaster(); seedCMRequest(); syncFromCM(); $('#drawer-root').dataset.key=''; S.ui.view=NAV.some(([k])=>k===location.hash.slice(1))?location.hash.slice(1):'requests'; toast('تمت استعادة البيانات التجريبية'); },
-  openClass(d){ S.ui.drawer={type:'class',id:d.id}; },
+  openClass(d){ S.ui.drawer={type:'class',id:d.id,date:d.date||null}; },
   openRoom(d){ S.ui.drawer={type:'room',id:d.id}; },
   closeDrawer(){ S.ui.drawer=null; $('#drawer-root').dataset.key=''; },
   dismiss(d){ const n=find(S.notifications,d.id); n.open=false; },
