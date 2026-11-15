@@ -905,9 +905,9 @@ function viewRequests(){
   const n={new:S.requests.filter(q=>q.status==='new').length,done:S.requests.filter(q=>q.status!=='new').length,all:S.requests.length};
   const list=S.requests.filter(q=>f==='all'||(f==='new'?q.status==='new':q.status!=='new'));
   const tab=(k,t)=>`<button role="tab" class="${f===k?'on':''}" aria-selected="${f===k}" data-act="reqFilter" data-v="${k}">${t}<span class="n">${n[k]}</span></button>`;
-  const empty={new:'لا توجد طلبات جديدة. ستظهر هنا طلبات أعضاء هيئة التدريس ونظام إدارة المواد فور وصولها.',done:'لا توجد طلبات تم البت فيها بعد.',all:'لا توجد طلبات.'}[f];
+  const empty={new:'لا توجد طلبات جديدة. ستظهر هنا طلبات أعضاء هيئة التدريس ونظام إدارة المواد فور وصولها.',done:'لم تتم معالجة أي طلب حتى الآن. الطلبات التي تعتمدها أو ترفضها أو تعيدها إلى إدارة المواد تظهر هنا.',all:'لا توجد طلبات.'}[f];
   return `<div class="page-head"><div><h2>الطلبات</h2><p>طلبات أعضاء هيئة التدريس والجهات الأخرى ونظام إدارة المواد. راجع التفاصيل ثم اعتمد، ويجب كتابة سبب أي رفض.</p></div>
-  <div class="seg" role="tablist" aria-label="تصفية الطلبات">${tab('new','جديدة')}${tab('done','تم البت فيها')}${tab('all','الكل')}</div></div>
+  <div class="seg" role="tablist" aria-label="تصفية الطلبات">${tab('new','جديدة')}${tab('done','تمت معالجتها')}${tab('all','الكل')}</div></div>
   <div class="stack">${list.length?list.map(reqCard).join(''):`<div class="empty">${empty}</div>`}</div>`;
 }
 /* Session table for a distribution request from Course Management, grouped by lecture group. */
