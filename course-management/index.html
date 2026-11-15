@@ -182,7 +182,7 @@ const NAV_GROUPS=[
   {t:'الإعداد',items:[['master','البيانات الأساسية'],['settings','الإعدادات']]}
 ];
 const NAV=NAV_GROUPS.flatMap(g=>g.items);
-const VERSION='النسخة: 15 نوفمبر 17:00';
+const VERSION='النسخة: 15 نوفمبر 19:00';
 const PTYPE_ITEM={core:'إجبارية',elective:'اختيارية'};
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
@@ -435,7 +435,7 @@ function issuesOf(o){
   if(!o.students) bad.push('عدد الطلاب غير مسجّل');
   for(const [k,x] of Object.entries(co.sessions)){ const w=weeksOf(x); if(w.to>S.term.weeks) bad.push(`خطة ال${KINDS[k]} تنتهي في الأسبوع ${w.to} بينما مدة الترم ${S.term.weeks} أسبوعًا`); }
   const noStaff=ss.filter(s=>!s.instructor);
-  if(noStaff.length) bad.push(`${noStaff.length} حصة بلا محاضر`);
+  if(noStaff.length) bad.push(`${noStaff.length} مجموعة بلا محاضر`);
   for(const k of Object.keys(co.sessions)) for(const q of co.reqs[k]||[]) if(q.mandatory&&!q.reason) bad.push(`${EQ[q.eq]} إلزامي في ال${KINDS[k]} دون سبب`);
   const sum=o.audiences.reduce((a,id)=>a+(cohort(id)?.students||0),0);
   const elec=isElective(o);
@@ -457,14 +457,14 @@ function diffSent(o){
   const a=JSON.parse(o.sent), b=payload(o), out=[];
   const ma=new Map(a.sessions.map(s=>[s.ref,s])), mb=new Map(b.sessions.map(s=>[s.ref,s]));
   for(const [r,s] of mb){ const p=ma.get(r);
-    if(!p){ out.push(`حصة جديدة: ${r} (${s.students} طالب)`); continue; }
+    if(!p){ out.push(`مجموعة جديدة: ${r} (${s.students} طالب)`); continue; }
     if(p.students!==s.students) out.push(`${r}: الطلاب ${p.students} ← ${s.students}`);
     if(p.deliveryMode!==s.deliveryMode) out.push(`${r}: ${MODE[p.deliveryMode]} ← ${MODE[s.deliveryMode]}`);
     if((p.instructor&&p.instructor.id)!==(s.instructor&&s.instructor.id)) out.push(`${r}: المحاضر ${p.instructor?p.instructor.name:'—'} ← ${s.instructor?s.instructor.name:'—'}`);
     if(p.fromWeek!==s.fromWeek||p.toWeek!==s.toWeek) out.push(`${r}: الأسابيع ${p.fromWeek}–${p.toWeek} ← ${s.fromWeek}–${s.toWeek}`);
     if(JSON.stringify(p.requirements)!==JSON.stringify(s.requirements)) out.push(`${r}: تغيّرت المتطلبات`);
   }
-  for(const r of ma.keys()) if(!mb.has(r)) out.push(`حصة حُذفت: ${r}`);
+  for(const r of ma.keys()) if(!mb.has(r)) out.push(`مجموعة حُذفت: ${r}`);
   return out;
 }
 
@@ -505,7 +505,7 @@ function allocCell(o){
   if(!ROOMS) return '<span class="meta">بانتظار نظام القاعات</span>';
   const a=allocOf(o); if(!a.known) return '<span class="meta">لم تصل بعد</span>';
   const n=s=>a.list.filter(x=>x.a&&x.a.state===s).length;
-  if(n('returned')) return pill(`تعذّر توزيع ${n('returned')} حصة`,'bad');
+  if(n('returned')) return pill(`تعذّر توزيع ${n('returned')} مجموعة`,'bad');
   if(n('rejected')) return pill('رُفض طلب التوزيع','bad');
   if(n('release')) return pill('بانتظار تأكيد الموظف','warn');
   if(n('pending')) return pill(`${n('pending')} مقترح، بانتظار الاعتماد`,'acc');
@@ -611,7 +611,7 @@ function viewOffer(){
     <div class="tile"><b>${students}</b><span>طالب</span></div>
     <div class="tile"><b>${act.length}</b><span>مادة مضافة للترم</span></div>
     <div class="tile"><b>${credits}</b><span>ساعة معتمدة</span></div>
-    <div class="tile"><b>${sess}</b><span>حصة تحتاج مكانًا</span></div>
+    <div class="tile"><b>${sess}</b><span>مجموعة تحتاج مكانًا</span></div>
     <div class="tile ${blocked?'bad':'ok'}"><b>${blocked}</b><span>مادة بياناتها ناقصة</span></div>
   </div>
   ${planPanel}
@@ -704,7 +704,7 @@ async function offerFromPlan(g,open){
 }
 
 /* ============ Master data (البيانات الأساسية) ============ */
-const MTABS=[['faculty','الجامعة والكليات'],['depts','الأقسام العلمية'],['programs','البرامج ومجموعات الطلاب'],['majors','الشعب'],['terms','الفصول الدراسية'],['equipment','الأدوات'],['fixed','أنواع الحصص وطرق التدريس']];
+const MTABS=[['faculty','الجامعة والكليات'],['depts','الأقسام العلمية'],['programs','البرامج ومجموعات الطلاب'],['majors','الشعب'],['terms','الفصول الدراسية'],['equipment','الأدوات'],['fixed','أنواع التدريس وطرقه']];
 const rankOf=p=>p&&p.rank?find(S.ranks,p.rank):null;
 const maxFor=p=>{ const r=rankOf(p); return r?r.maxLoad:S.settings.maxLoad[p.role]; };
 const staffUse=pid=>loadOf(pid).items.length;
@@ -732,8 +732,8 @@ function viewMaster(){
       <button class="btn primary" data-act="addProgram">إضافة برنامج</button>`; }
   if(tab==='terms') body=tbl(['الفصل','الفترة',''],S.terms.map(t=>mRow(`${esc(t.name)}${t.id===S.termId?' '+pill('الحالي','ok'):''}`,`${['','الفصل الأول','الفصل الثاني','الفصل الصيفي'][t.semester]} · يبدأ ${esc(t.start)} · ${t.weeks} أسبوع`,`<button class="btn sm" data-act="editTerm" data-id="${t.id}">تعديل</button>${t.id===S.termId?'':`<button class="btn sm" data-act="setTerm" data-id="${t.id}">تعيينه كالحالي</button>`}${delBtn('delTerm',t.id,t.id===S.termId,'لا يمكن حذف الترم الحالي')}`)).join(''),`<button class="btn primary" data-act="addTerm">إضافة فصل دراسي</button>`);
   if(tab==='equipment') body=`${tbl(['الأداة','مطلوبة في',''],Object.entries(EQ).map(([k,t])=>{ const n=S.courses.filter(c=>Object.values(c.reqs).some(l=>l.some(q=>q.eq===k))).length; return mRow(esc(t),n?`${n} مادة`:'غير مطلوبة في أي مادة',''); }).join(''),'')}<p class="hint">قائمة الأدوات يملكها نظام القاعات (من البيانات الأساسية هناك)، وتصل إلى هنا تلقائيًا عند فتح النظامين من الموقع نفسه.</p>`;
-  if(tab==='fixed') body=`<div class="cols"><section class="panel"><h3>أنواع الحصص</h3>${Object.values(KINDS).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">ثابتة لأن نظام القاعات يستقبل الحصص على أساسها.</p></section><section class="panel"><h3>طرق التدريس</h3>${Object.values(MODE).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">"حضوري - أونلاين" يضيف كاميرا وميكروفونًا وإنترنت كمتطلبات إلزامية في نظام القاعات.</p></section></div>`;
-  return `<div class="page-head"><div><h2>البيانات الأساسية</h2><p>${esc(S.university)} ← ${esc(S.faculty.name)}. القوائم التي يعتمد عليها باقي النظام. لا يُسمح بحذف عنصر مستخدم.</p></div></div>${tabs}<p class="hint" style="margin-top:-6px">يُعرَّف أعضاء هيئة التدريس ودرجاتهم الوظيفية في وحدة شؤون أعضاء هيئة التدريس، ويقرأها هذا النظام فقط لتعيينهم على الحصص وحساب العبء التدريسي.</p>${body}`;
+  if(tab==='fixed') body=`<div class="cols"><section class="panel"><h3>أنواع التدريس</h3>${Object.values(KINDS).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">ثابتة لأن نظام القاعات يستقبل المحاضرات والسكاشن على أساسها.</p></section><section class="panel"><h3>طرق التدريس</h3>${Object.values(MODE).map(k=>`<span class="tag">${k}</span>`).join('')}<p class="hint">"حضوري - أونلاين" يضيف كاميرا وميكروفونًا وإنترنت كمتطلبات إلزامية في نظام القاعات.</p></section></div>`;
+  return `<div class="page-head"><div><h2>البيانات الأساسية</h2><p>${esc(S.university)} ← ${esc(S.faculty.name)}. القوائم التي يعتمد عليها باقي النظام. لا يُسمح بحذف عنصر مستخدم.</p></div></div>${tabs}<p class="hint" style="margin-top:-6px">يُعرَّف أعضاء هيئة التدريس ودرجاتهم الوظيفية في وحدة شؤون أعضاء هيئة التدريس، ويقرأها هذا النظام فقط لتعيينهم على المحاضرات والسكاشن وحساب العبء التدريسي.</p>${body}`;
 }
 async function nameDialog(title,value=''){ const v=await ask({title,fields:[{id:'name',label:'الاسم',required:true,value}],ok:'حفظ'}); return v&&v.name; }
 async function termDialog(t){
@@ -769,10 +769,10 @@ function viewOutbox(){
   const f=S.ui.outFilter;
   const list=S.offerings.filter(o=>o.offered&&semOf(o)===S.term.semester).filter(o=>f==='all'||sendState(o)[1]===f);
   const pv=S.ui.preview?S.offerings.find(o=>o.id===S.ui.preview):null;
-  return `<div class="page-head"><div><h2>الإرسال لنظام القاعات</h2><p>تُرسل كل مادة مضافة للترم كقائمة حصص: مجموعات المحاضرة والسكاشن والمعامل، وأسابيعها، ومتطلباتها. أي تغيير بعد الإرسال يجب إرساله كتحديث.</p></div>
+  return `<div class="page-head"><div><h2>الإرسال لنظام القاعات</h2><p>تُرسل كل مادة مضافة للترم كقائمة مجموعات: مجموعات المحاضرة والسكاشن والمعامل، وأسابيعها، ومتطلباتها. أي تغيير بعد الإرسال يجب إرساله كتحديث.</p></div>
   <div class="inline"><button class="btn sm ${f==='all'?'primary':''}" data-act="outFilter" data-v="all">الكل</button><button class="btn sm ${f==='acc'?'primary':''}" data-act="outFilter" data-v="acc">لم تُرسل</button><button class="btn sm ${f==='warn'?'primary':''}" data-act="outFilter" data-v="warn">تغيّرت</button><button class="btn sm ${f==='ok'?'primary':''}" data-act="outFilter" data-v="ok">أُرسلت</button></div></div>
   <div class="cols">
-    <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>مجموعات الطلاب</th><th>الحصص</th><th>الحالة</th><th>التوزيع</th><th></th></tr></thead><tbody>
+    <div class="tbl-wrap"><table><thead><tr><th>المادة</th><th>مجموعات الطلاب</th><th>المجموعات</th><th>الحالة</th><th>التوزيع</th><th></th></tr></thead><tbody>
     ${list.map(o=>{ const co=course(o.courseId), [st,k]=sendState(o), is=issuesOf(o), ss=sessionsOf(o), d=diffSent(o);
       return `<tr><td><b>${esc(co.code)}</b> · ${esc(co.name)}${k==='warn'?`<div class="meta" style="color:var(--warn)">${d.slice(0,3).map(esc).join('<br>')}${d.length>3?'<br>…':''}</div>`:''}</td><td class="meta">${esc(audNames(o))}</td><td class="num">${ss.filter(s=>s.mode!=='online').length}${ss.some(s=>s.mode==='online')?` <span class="meta">+ ${ss.filter(s=>s.mode==='online').length} أونلاين</span>`:''}</td><td>${pill(st,k)}</td><td>${allocCell(o)}</td>
       <td><div class="inline"><button class="btn sm ghost" data-act="preview" data-id="${o.id}">البيانات</button>${k!=='ok'?(is.bad.length?`<span class="tag bad" title="${esc(is.bad.join('، '))}">بياناتها ناقصة</span>`:`<button class="btn sm primary" data-act="sendOne" data-id="${o.id}">${k==='warn'?'إرسال تحديث':'إرسال'}</button>`):''}</div></td></tr>`; }).join('')||'<tr><td colspan="6" class="meta">لا توجد مواد بهذا الفلتر.</td></tr>'}
@@ -832,7 +832,7 @@ function drawerOffering(o){
     ${is.bad.length||is.warn.length?`<div class="issues">${is.bad.map(x=>`<div class="issue bad">${esc(x)}</div>`).join('')}${is.warn.map(x=>`<div class="issue warn">${esc(x)}</div>`).join('')}</div>`:'<div class="okbox">البيانات كاملة وجاهزة للإرسال.</div>'}
     ${k==='warn'&&d.length?`<div class="issue warn"><b>تغيّر بعد آخر إرسال:</b><br>${d.slice(0,12).map(esc).join('<br>')}${d.length>12?'<br>…':''}</div>`:''}
     ${(()=>{ if(!o.offered||!o.sent||!ROOMS) return ''; const ret=allocOf(o).list.filter(x=>x.a&&x.a.state==='returned'); if(!ret.length) return '';
-      return `<div class="issue bad"><b>تعذّر توزيع ${ret.length} حصة في نظام القاعات.</b><br>${esc(ret[0].a.label.replace(/^تعذّر التوزيع: /,'السبب: '))}<br>القرار هنا: قسّم المجموعات، أو غيّر طريقة التدريس، أو عدّل الأسابيع، ثم أرسل التحديث. ${k==='ok'?`<button class="btn sm" data-act="resend" data-id="${o.id}" style="margin-top:6px">إعادة الإرسال كما هي</button>`:''}</div>`; })()}
+      return `<div class="issue bad"><b>تعذّر توزيع ${ret.length} مجموعة في نظام القاعات.</b><br>${esc(ret[0].a.label.replace(/^تعذّر التوزيع: /,'السبب: '))}<br>القرار هنا: قسّم المجموعات، أو غيّر طريقة التدريس، أو عدّل الأسابيع، ثم أرسل التحديث. ${k==='ok'?`<button class="btn sm" data-act="resend" data-id="${o.id}" style="margin-top:6px">إعادة الإرسال كما هي</button>`:''}</div>`; })()}
     ${o.offered&&o.sent?`<section><div class="sec-title">حالة التوزيع في نظام القاعات</div><div class="card">${!ROOMS?'<div class="meta">لم يُفتح نظام القاعات بعد. افتحه من الموقع نفسه لتصل الحالة إلى هنا.</div>':allocOf(o).list.map(({s,a})=>`<div class="grp" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${KINDS[s.kind]} · ${esc(groupLabel(s.group,s.lg))}</b> <span class="meta">${a&&a.when?esc(a.when):''}${a&&a.room?' · '+esc(a.room)+' ('+esc(a.building)+')':''}</span></span>${a?pill(a.label,ALLOC_KIND[a.state]||'off'):'<span class="meta">لم تصل بعد</span>'}</div>`).join('')}</div></section>`:''}
     ${Object.keys(co.sessions).map(kindBox).join('')}
     ${missing.length?`<div class="inline">${missing.map(x=>`<button class="btn sm" data-act="addKind" data-co="${co.id}" data-k="${x}">إضافة ${KINDS[x]}</button>`).join('')}</div>`:''}
@@ -932,7 +932,7 @@ const ACT={
   async toggleMand(d){
     const q=course(d.co).reqs[d.k][d.i];
     if(!q.mandatory){
-      const v=await ask({title:`${EQ[q.eq]} إلزامي`,body:'<p class="meta">يرى موظف التوزيع هذا السبب أثناء التوزيع، ويمكنه إلغاء الإلزام لحصة واحدة إذا لم يتوفر مكان.</p>',fields:[{id:'reason',label:'سبب الإلزام',type:'textarea',required:true,value:q.reason}],ok:'حفظ'});
+      const v=await ask({title:`${EQ[q.eq]} إلزامي`,body:'<p class="meta">يرى موظف التوزيع هذا السبب أثناء التوزيع، ويمكنه إلغاء الإلزام لمجموعة واحدة إذا لم يتوفر مكان.</p>',fields:[{id:'reason',label:'سبب الإلزام',type:'textarea',required:true,value:q.reason}],ok:'حفظ'});
       if(!v) return; q.mandatory=true; q.reason=v.reason;
     } else q.mandatory=false;
     render();
@@ -948,7 +948,7 @@ const ACT={
       {id:'credits',label:'الساعات المعتمدة',type:'number',value:'3',min:1},
       {id:'lectures',label:'عدد المحاضرات في الترم',type:'number',value:'12',min:1},
       {id:'others',label:'عدد السكاشن أو المعامل في الترم',type:'number',value:'10',min:1},
-      {id:'kinds',label:'أنواع الحصص',type:'checks',required:true,options:[['lecture','محاضرة',true],['section','سكشن',false],['lab','معمل',false]]}],ok:'إضافة'});
+      {id:'kinds',label:'أنواع التدريس',type:'checks',required:true,options:[['lecture','محاضرة',true],['section','سكشن',false],['lab','معمل',false]]}],ok:'إضافة'});
     if(!v) return;
     if(S.courses.some(c=>c.code.toLowerCase()===v.code.toLowerCase())){ toast(`الكود ${v.code} موجود بالفعل`); return; }
     const sessions={}, reqs={}; for(const k of v.kinds){ sessions[k]={hours:2,perWeek:1,count:Math.max(1,Number(k==='lecture'?v.lectures:v.others)||10),startWeek:k==='lecture'?1:3}; reqs[k]=[]; }

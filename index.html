@@ -406,7 +406,10 @@ const wk=c=>c.weeks||[1,(S.term&&S.term.weeks)||16];
 const overlapW=(a,b)=>{ const x=wk(a), y=wk(b); return x[0]<=y[1]&&y[0]<=x[1]; };
 const KIND_NOUN={lecture:['محاضرة','محاضرات'],section:['سكشن','سكاشن'],lab:['معمل','معامل']};
 /* "12 محاضرة" / "10 سكاشن": Arabic plural for 3–10, singular otherwise. */
-const countOf=(n,k)=>{ const w=KIND_NOUN[k]||[S.usage[k]||'حصة','حصص']; return `${n} ${n>=3&&n<=10?w[1]:w[0]}`; };
+const KIND_DUAL={lecture:'محاضرتان',lab:'معملان'};
+const countOf=(n,k)=>{ if(n===2&&KIND_DUAL[k]) return KIND_DUAL[k]; const w=KIND_NOUN[k]||[S.usage[k]||'موعد','مواعيد']; return `${n} ${n>=3&&n<=10?w[1]:w[0]}`; };
+/* "2 محاضرة و12 سكشن" — a university counts lectures and sections, not "حصص". */
+const mix=list=>{ const by={}; list.forEach(c=>{ if(c) by[c.kind]=(by[c.kind]||0)+1; }); return Object.entries(by).map(([k,n])=>countOf(n,k)).join(' و')||'0'; };
 /* Real dates: week w (1 = term start week), day d (0 = السبت). */
 const weekDate=(w,d)=>addDays(weekStart(S.term.start),(w-1)*7+d);
 const shortDate=x=>{ const d=parseD(x); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`; };
@@ -661,7 +664,7 @@ function applyOffering(oid,p){
     const gone=S.classes.filter(c=>c.status==='active'&&c.cmOffering===oid);
     const held=[];
     for(const c of gone){ if(c.roomId){ c.release={action:'cancel',text:'حُذفت المادة من الترم'}; held.push(c.id); } else { c.status='cancelled'; c.pending=false; } }
-    if(held.length) changeRequest(gone[0].courseId,held,`نظام إدارة المواد حذف المادة من الترم. ${held.length} حصة ما زالت تحجز أماكن. أكّد لتحرير الأماكن وعرضها على المواد التي تحتاجها.`);
+    if(held.length) changeRequest(gone[0].courseId,held,`نظام إدارة المواد حذف المادة من الترم. ${mix(held)} ما زالت تحجز أماكن. أكّد لتحرير الأماكن وعرضها على المواد التي تحتاجها.`);
     S.cmRefs[oid]=[]; return;
   }
   const auds=(p.audiences||[p.cohort]).filter(Boolean); auds.forEach(ensureCohort); const audIds=auds.map(a=>a.id);
@@ -697,18 +700,18 @@ function applyOffering(oid,p){
   }
   for(const r of prevRefs) if(!refs.includes(r)){
     const c=S.classes.find(x=>x.status==='active'&&x.cmOffering===oid&&refOf(x)===r);
-    if(c){ lines.push(`حُذفت ${shortLabel(c)}`); if(c.roomId){ c.release={action:'cancel',text:'حُذفت الحصة (قلّ عدد المجموعات)'}; changeIds.push(c.id); } else { c.status='cancelled'; c.pending=false; } }
+    if(c){ lines.push(`حُذفت ${shortLabel(c)}`); if(c.roomId){ c.release={action:'cancel',text:'حُذفت هذه المجموعة لأن عدد المجموعات قلّ'}; changeIds.push(c.id); } else { c.status='cancelled'; c.pending=false; } }
   }
   S.cmRefs[oid]=refs;
-  if(affected.length) lines.push(`${affected.length} حصة لم يعد مكانها مناسبًا بعد التحديث`);
-  if(changeIds.length){ changeRequest(co.id,changeIds,`${changeIds.length} حصة تغيّرت في نظام إدارة المواد بشكل يُفرغ أماكنها. ستظل الأماكن محجوزة حتى تؤكد.`); lines.push(`${changeIds.length} حصة تحتاج إلى تأكيدك لتحرير أماكنها (في صفحة الطلبات)`); }
+  if(affected.length) lines.push(`${mix(affected)}: لم يعد المكان مناسبًا بعد التحديث`);
+  if(changeIds.length){ changeRequest(co.id,changeIds,`${mix(changeIds.map(cls))} تغيّرت في نظام إدارة المواد بشكل يُفرغ أماكنها. ستظل الأماكن محجوزة حتى تؤكد.`); lines.push(`${mix(changeIds.map(cls))} تحتاج إلى تأكيدك لتحرير أماكنها (في صفحة الطلبات)`); }
   if(reqIds.length){
     const ok=reqIds.filter(id=>{ const c=cls(id); return c.day!=null&&(c.mode==='online'||c.roomId); }).length;
-    S.requests.unshift({id:nid('q'),type:'cm',fromLabel:'نظام إدارة المواد',date:stamp(),status:'new',courseId:co.id,offering:oid,classIds:reqIds,text:`${reqIds.length} حصة جديدة تحتاج إلى موعد ومكان. `+(ok===reqIds.length?'اقترح النظام موعدًا ومكانًا لكل الحصص. راجع ثم اعتمد أو غيّر.':ok?`اقترح النظام موعدًا ومكانًا لـ ${ok} منها، ولم يجد للباقي (${reqIds.length-ok}) موعدًا ومكانًا مناسبين، لذا يلزم اختيارهما يدويًا.`:'لم يجد النظام موعدًا ومكانًا مناسبين لأي من هذه الحصص. افتح كل حصة لعرض أسباب استبعاد الأماكن.')});
-    lines.push(`${reqIds.length} حصة جديدة: أُنشئ طلب توزيع باقتراح من النظام في صفحة الطلبات`);
+    S.requests.unshift({id:nid('q'),type:'cm',fromLabel:'نظام إدارة المواد',date:stamp(),status:'new',courseId:co.id,offering:oid,classIds:reqIds,text:`${mix(reqIds.map(cls))} جديدة تحتاج إلى موعد ومكان. `+(ok===reqIds.length?'اقترح النظام موعدًا ومكانًا لكل المحاضرات والسكاشن. راجع ثم اعتمد أو غيّر.':ok?`اقترح النظام موعدًا ومكانًا لـ ${ok} منها، ولم يجد للباقي (${reqIds.length-ok}) موعدًا ومكانًا مناسبين، لذا يلزم اختيارهما يدويًا.`:'لم يجد النظام موعدًا ومكانًا مناسبين لأي منها. افتح كل محاضرة أو سكشن لعرض أسباب استبعاد الأماكن.')});
+    lines.push(`${mix(reqIds.map(cls))} جديدة: أُنشئ طلب توزيع باقتراح من النظام في صفحة الطلبات`);
   }
   if(lines.length||newIds.length){
-    if(newIds.length) lines.push(`${newIds.length} حصة عادت حضوري وتحتاج إلى مكان`);
+    if(newIds.length) lines.push(`${mix(newIds.map(cls))} عادت حضوري وتحتاج إلى مكان`);
     S.notifications.unshift({id:nid('n'),type:'cm',open:true,at:stamp(),title:`${co.code} · ${co.name}`,lines,classIds:[...newIds,...affected.map(c=>c.id)]});
     log('تحديث من نظام إدارة المواد',`${co.code} ${co.name}: ${lines.join(' · ')}`);
   }
@@ -810,7 +813,7 @@ function renderRail(){
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${esc((S.university||'جامعة الإسكندرية')+' · '+((S.faculty&&S.faculty.name)||''))}<br>${S.term.name} · موظف التوزيع</small></div>`+
     `<nav aria-label="القائمة" style="display:contents">`+NAV_GROUPS.map(g=>`<div class="nav-group" role="presentation">${g.t}</div>`+g.items.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')).join('')+
     `<a class="nav ext" href="course-management/"><span>إدارة المواد الدراسية</span><span aria-hidden="true">↖</span></a></nav>`+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 18:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 19:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -825,7 +828,7 @@ function viewDashboard(){
   <div class="tiles">
     <button class="tile ok" data-nav="rooms"><b>${avail}<small class="muted" style="font-size:15px"> / ${S.rooms.length}</small></b><span>أماكن متاحة</span></button>
     <button class="tile ${maint?'bad':''}" data-nav="rooms"><b>${maint}</b><span>في الصيانة</span></button>
-    <button class="tile ${unsched.length?'bad':''}" data-jump="h-un"><b>${unsched.length}</b><span>حصص تحتاج إلى موعد</span></button>
+    <button class="tile ${unsched.length?'bad':''}" data-jump="h-un"><b>${unsched.length}</b><span>محاضرات وسكاشن تحتاج إلى موعد</span></button>
     <button class="tile ${waiting.length?'bad':''}" data-jump="h-wait"><b>${waiting.length}</b><span>مواد في الانتظار</span></button>
     <button class="tile ${issues.length?'warn':''}" data-jump="h-iss"><b>${issues.length}</b><span>تحتاج إلى مراجعة</span></button>
     <button class="tile" data-nav="requests"><b>${newReq}</b><span>طلبات جديدة</span></button>
@@ -835,7 +838,7 @@ function viewDashboard(){
       <div class="stack">${notes.length?notes.map(noteCard).join(''):'<div class="empty">لا توجد إشعارات مفتوحة.</div>'}</div>
     </section>
     <div class="stack">
-      ${unsched.length?`<section class="panel" aria-labelledby="h-un"><h3 id="h-un">حصص جديدة تحتاج إلى موعد ومكان <span class="count">${unsched.length}</span></h3>
+      ${unsched.length?`<section class="panel" aria-labelledby="h-un"><h3 id="h-un">محاضرات وسكاشن جديدة تحتاج إلى موعد ومكان <span class="count">${unsched.length}</span></h3>
         <div class="stack">${unsched.map(c=>`<div class="card stripe-bad"><div class="card-head"><div><h4>${esc(label(c))}</h4><div class="meta">${c.students} طالب · ${c.instructor?esc(person(c.instructor).name):'—'} · ${MODE[c.mode]} · من نظام إدارة المواد</div></div><button class="btn sm" data-act="openClass" data-id="${c.id}">تحديد الموعد</button></div></div>`).join('')}</div></section>`:''}
       <section class="panel" aria-labelledby="h-wait"><h3 id="h-wait">مواد تحتاج إلى مكان <span class="count">${waiting.length}</span></h3>
         <div class="stack">${waiting.length?waiting.map(c=>classMiniCard(c,'stripe-bad')).join(''):'<div class="empty">كل المواد الحضورية لها أماكن.</div>'}</div>
@@ -879,7 +882,7 @@ function attentionPanels(){
   const notes=S.notifications.filter(n=>n.open);
   if(!notes.length&&!waiting.length&&!issues.length&&!unsched.length) return '';
   const side=[
-    unsched.length?`<section class="panel" aria-labelledby="h-un"><h3 id="h-un">حصص جديدة تحتاج إلى موعد ومكان <span class="count">${unsched.length}</span></h3><div class="stack">${unsched.map(c=>`<div class="card stripe-bad"><div class="card-head"><div><h4>${esc(label(c))}</h4><div class="meta">${c.students} طالب · ${c.instructor?esc(person(c.instructor).name):'—'} · ${MODE[c.mode]} · من نظام إدارة المواد</div></div><button class="btn sm" data-act="openClass" data-id="${c.id}">تحديد الموعد</button></div></div>`).join('')}</div></section>`:'',
+    unsched.length?`<section class="panel" aria-labelledby="h-un"><h3 id="h-un">محاضرات وسكاشن جديدة تحتاج إلى موعد ومكان <span class="count">${unsched.length}</span></h3><div class="stack">${unsched.map(c=>`<div class="card stripe-bad"><div class="card-head"><div><h4>${esc(label(c))}</h4><div class="meta">${c.students} طالب · ${c.instructor?esc(person(c.instructor).name):'—'} · ${MODE[c.mode]} · من نظام إدارة المواد</div></div><button class="btn sm" data-act="openClass" data-id="${c.id}">تحديد الموعد</button></div></div>`).join('')}</div></section>`:'',
     waiting.length?`<section class="panel" aria-labelledby="h-wait"><h3 id="h-wait">مواد تحتاج إلى مكان <span class="count">${waiting.length}</span></h3><div class="stack">${waiting.map(c=>classMiniCard(c,'stripe-bad')).join('')}</div></section>`:'',
     issues.length?`<section class="panel" aria-labelledby="h-iss"><h3 id="h-iss">مواد تحتاج إلى مراجعة <span class="count">${issues.length}</span></h3><div class="stack">${issues.map(c=>classMiniCard(c,'stripe-warn',conflictsOf(c)[0])).join('')}</div></section>`:''
   ].join('');
@@ -926,7 +929,7 @@ function cmSessionsTable(q){
       <td>${q.status==='new'&&c.status!=='cancelled'?`<button class="btn sm ghost" data-act="openClass" data-id="${c.id}" aria-label="تغيير موعد أو مكان ${esc(shortLabel(c))}">تغيير</button>`:''}</td></tr>`; };
   return `<ul class="meta" style="margin:0 0 8px;padding-inline-start:18px">${kinds}</ul>
   <div class="tbl-wrap sess-table"><table><colgroup><col style="width:24%"><col style="width:10%"><col style="width:20%"><col style="width:20%"><col style="width:16%"><col style="width:10%"></colgroup>
-  <thead><tr><th>الحصة</th><th>الطلاب</th><th>الموعد الأسبوعي</th><th>المكان</th><th>المناسبة</th><th><span class="sr-only">إجراء</span></th></tr></thead><tbody>
+  <thead><tr><th>المجموعة</th><th>الطلاب</th><th>الموعد الأسبوعي</th><th>المكان</th><th>المناسبة</th><th><span class="sr-only">إجراء</span></th></tr></thead><tbody>
     ${groups.map(g=>{ const rows=cs.filter(c=>lg(c)===g).sort((a,b)=>order(a)-order(b)); const lec=rows.filter(c=>c.kind==='lecture'), oth=rows.filter(c=>c.kind!=='lecture');
       const head=`مجموعة المحاضرة ${esc(g.replace(/^L/,''))}${lec.length?` · المحاضرة: ${esc(names(lec))}`:''}${oth.length?` · ${esc([...new Set(oth.map(c=>S.usage[c.kind]))].join(' و'))}: ${esc(names(oth))}`:''}`;
       return `<tr class="sess-group"><td colspan="6">${head}</td></tr>`+rows.map(row).join(''); }).join('')}
@@ -938,7 +941,7 @@ const nextOn=d=>{ let x=addDays(S.today<S.term.start?addDays(S.term.start,-1):S.
 function reqWhen(q){
   if(q.type==='cm'||q.type==='cm_change'){ const cs=q.classIds.map(cls).filter(c=>c&&c.day!=null); if(!cs.length) return [];
     const first=cs.map(c=>weekDate(wk(c)[0],c.day)).sort()[0], last=cs.map(c=>weekDate(wk(c)[1],c.day)).sort().pop();
-    return [['أول حصة',dateLabel(first)],['آخر حصة',dateLabel(last)],['عدد الحصص',`${q.classIds.length} حصة`]]; }
+    return [['تبدأ',dateLabel(first)],['تنتهي',dateLabel(last)],['العدد',mix(q.classIds.map(cls))]]; }
   if(q.type==='shift') return [['التاريخ',dateLabel(q.targetDate)],['الأوقات',q.classIds.map(id=>SLOTS[cls(id).slot]).join('، ')],['الموعد المفضّل',q.preferred?`${dateLabel(q.preferred.date)} · ${SLOTS[q.preferred.slot]}`:'لم يحدد']];
   if(q.type==='online'){ const c=cls(q.classId); return [['الموعد الأسبوعي',`${DAYS[c.day]} · ${SLOTS[c.slot]}`],['من',dateLabel(nextOn(c.day))],['حتى',dateLabel(weekDate(wk(c)[1],c.day))]]; }
   if(q.type==='cancel_once'){ const c=cls(q.classId); return [['التاريخ',q.onDate?dateLabel(q.onDate):q.when],['الوقت',SLOTS[c.slot]]]; }
@@ -951,8 +954,8 @@ function reqCard(q){
   if(q.type==='cm'||q.type==='cm_change'){ const co=course(q.courseId); const cs=q.classIds.map(cls).filter(Boolean); title=`${co.code} · ${co.name}`;
     if(q.type==='cm'){ facts=[cs[0]?audName(cs[0]):''].filter(Boolean); approve='اعتماد التوزيع';
       const prop=cs.filter(c=>c.status!=='cancelled'&&c.day!=null&&(c.roomId||c.mode==='online')).length, none=cs.filter(c=>c.status!=='cancelled'&&(c.day==null||(!c.roomId&&c.mode!=='online'))).length;
-      extra=`<details class="req-sess"${q.status==='new'?' open':''}><summary>الحصص (${cs.length})${q.status==='new'?` · ${pill(`${prop} مقترح`,'acc')}${none?' '+pill(`${none} بلا اقتراح`,'bad'):''}`:''}</summary>${cmSessionsTable(q)}</details>`; }
-    else { facts=[`${cs.length} حصة`]; approve='تأكيد وتحرير الأماكن';
+      extra=`<details class="req-sess"${q.status==='new'?' open':''}><summary>المحاضرات والسكاشن (${mix(cs)})${q.status==='new'?` · ${pill(`${prop} مقترح`,'acc')}${none?' '+pill(`${none} بلا اقتراح`,'bad'):''}`:''}</summary>${cmSessionsTable(q)}</details>`; }
+    else { facts=[mix(cs)]; approve='تأكيد وتحرير الأماكن';
       extra=`<div style="margin-top:6px">${cs.map(c=>`<div class="cand"><div><b>${esc(label(c))}</b> <span class="meta">${when(c)}</span><div class="meta">${c.release?`${esc(c.release.text)} · تحجز حاليًا ${c.roomId?esc(room(c.roomId).name):'—'} · بعد التأكيد ${c.release.action==='online'?'ستصبح أونلاين':'ستُلغى'} وسيُعرض المكان على المواد التي تحتاجه`:'تم التأكيد'}</div></div><button class="btn sm ghost" data-act="openClass" data-id="${c.id}">التفاصيل</button></div>`).join('')}</div>`; } }
   if(q.type==='shift'){ const whole=q.classIds.length===personSessionsOn(q.from,q.targetDate).length+q.classIds.filter(id=>oneoffFor(id,q.targetDate)).length;
     title=`نقل محاضرات ${dateLabel(q.targetDate)}`; facts=[whole?'اليوم كله':'جزء من اليوم',q.classIds.map(id=>shortLabel(cls(id))).join('، ')]; approve='مراجعة واختيار المواعيد'; }
@@ -1054,10 +1057,10 @@ function viewCalendar(){
     <select data-chg="calF" data-k="building" aria-label="المبنى"><option value="">كل المباني</option>${S.buildings.map(b=>`<option value="${b.id}"${f.building===b.id?' selected':''}>${esc(b.name)}</option>`).join('')}</select>
     <select data-chg="calF" data-k="person" aria-label="المحاضر"><option value="">كل المحاضرين</option>${people.map(p=>`<option value="${p.id}"${f.person===p.id?' selected':''}>${esc(p.name)}</option>`).join('')}</select>
     <select data-chg="calF" data-k="cohort" aria-label="الفرقة"><option value="">كل الفرق</option>${S.cohorts.map(c=>`<option value="${c.id}"${f.cohort===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select>
-    <select data-chg="calF" data-k="kind" aria-label="نوع الحصة"><option value="">كل الأنواع</option>${['lecture','section','lab'].map(k=>`<option value="${k}"${f.kind===k?' selected':''}>${S.usage[k]}</option>`).join('')}</select>
+    <select data-chg="calF" data-k="kind" aria-label="النوع"><option value="">كل الأنواع</option>${['lecture','section','lab'].map(k=>`<option value="${k}"${f.kind===k?' selected':''}>${S.usage[k]}</option>`).join('')}</select>
   </div>
-  <div class="legend"><span><b class="num" style="color:var(--ink)">${S.term.name} · ${weekNo>=1&&weekNo<=S.term.weeks?'الأسبوع '+weekNo:'خارج الترم'}${ws===cur?(S.today<S.term.start?` (يبدأ ${dateLabel(S.term.start)})`:' (الحالي)'):''}</b></span><span>${stats.live} حصة</span>${stats.shifted?`<span>${stats.shifted} منقولة إلى هذا الأسبوع</span>`:''}${stats.gone?`<span>${stats.gone} نُقلت إلى موعد آخر</span>`:''}${stats.cancelled?`<span>${stats.cancelled} ملغية</span>`:''}${stats.noroom?`<span style="color:var(--bad)">${stats.noroom} بدون مكان</span>`:''}</div>
-  <div class="legend"><span><i style="background:var(--ok)"></i>حصة عادية</span><span><i style="background:var(--accent)"></i>منقولة إلى هذا الموعد</span><span><i style="background:var(--off)"></i>أونلاين، أو منقولة/ملغاة هذه المرة</span><span><i style="background:var(--bad)"></i>بدون مكان</span></div>
+  <div class="legend"><span><b class="num" style="color:var(--ink)">${S.term.name} · ${weekNo>=1&&weekNo<=S.term.weeks?'الأسبوع '+weekNo:'خارج الترم'}${ws===cur?(S.today<S.term.start?` (يبدأ ${dateLabel(S.term.start)})`:' (الحالي)'):''}</b></span><span>${stats.live} محاضرة وسكشن وحجز</span>${stats.shifted?`<span>${stats.shifted} منقولة إلى هذا الأسبوع</span>`:''}${stats.gone?`<span>${stats.gone} نُقلت إلى موعد آخر</span>`:''}${stats.cancelled?`<span>${stats.cancelled} ملغية</span>`:''}${stats.noroom?`<span style="color:var(--bad)">${stats.noroom} بدون مكان</span>`:''}</div>
+  <div class="legend"><span><i style="background:var(--ok)"></i>في موعدها</span><span><i style="background:var(--accent)"></i>منقولة إلى هذا الموعد</span><span><i style="background:var(--off)"></i>أونلاين، أو منقولة/ملغاة هذه المرة</span><span><i style="background:var(--bad)"></i>بدون مكان</span></div>
   <div class="tbl-wrap"><table class="grid"><thead><tr><th>اليوم</th>${SLOTS.map(s=>`<th class="num">${s}</th>`).join('')}</tr></thead>
   <tbody>${body}</tbody></table></div>`;
 }
@@ -1132,7 +1135,7 @@ function viewPreferred(){
         <label>المادة<select data-chg="pref" data-k="courseId"><option value="">كل مواد الدكتور</option>${dCourses.map(c=>`<option value="${c.id}"${p.courseId===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
       </div>
       <div class="row-actions" style="margin-top:12px"><button class="btn" data-act="prefCheck">افحص التوافق</button><button class="btn primary" data-act="prefSave">حفظ</button></div>
-      ${p.result?prefResultHtml(p.result):'<p class="hint" style="margin-top:10px">إذا لم تُختر مادة، سيفحص النظام كل الحصص التي يدرّسها عضو هيئة التدريس.</p>'}
+      ${p.result?prefResultHtml(p.result):'<p class="hint" style="margin-top:10px">إذا لم تُختر مادة، سيفحص النظام كل المحاضرات والسكاشن التي يدرّسها عضو هيئة التدريس.</p>'}
     </section>
     <section class="panel" aria-labelledby="h-pl"><h3 id="h-pl">الترتيب الحالي</h3><p class="hint" style="margin-top:-6px">إذا فضّل أكثر من عضو هيئة تدريس القاعة نفسها، يظهر هذا الترتيب في الاقتراحات والقرار لك.</p>
       ${byRoom.length?byRoom.map(({r,list})=>`<div style="margin-top:10px"><div class="sec-title">${esc(r.name)}</div>${list.map((x,i)=>`<div class="rank"><span class="n">${x.rank}</span><div style="flex:1"><b>${esc(person(x.doctorId).name)}</b><div class="meta">${x.courseId?esc(course(x.courseId).name):'كل المواد'}${x.reason?' · '+esc(x.reason):''}</div></div>
@@ -1146,7 +1149,7 @@ function prefCheck(){
   return list.map(c=>{ const e=evaluate(r,c,{ignoreTime:true,ignoreStatus:true}); return {c,e,level:!e.ok?'bad':(e.missing.length||e.notes.length?'warn':'ok')}; });
 }
 function prefResultHtml(res){
-  if(!res.length) return `<div class="infobox" style="margin-top:10px">لا توجد حصص لهذا المحاضر بهذا الاختيار في الترم الحالي.</div>`;
+  if(!res.length) return `<div class="infobox" style="margin-top:10px">لا توجد محاضرات أو سكاشن لهذا المحاضر بهذا الاختيار في الترم الحالي.</div>`;
   return `<div class="check-res">${res.map(({c,e,level})=>`<div class="${level==='ok'?'okbox':level==='warn'?'warnbox':'badbox'}"><b>${esc(label(c))}</b> (${c.students} طالب): ${level==='ok'?'مناسبة':level==='warn'?'مناسبة مع ملاحظات — '+esc([...e.missing.map(m=>'ناقص '+m),...e.notes].join('، ')):'غير مناسبة — '+esc(e.reason)}</div>`).join('')}</div>`;
 }
 
@@ -1175,7 +1178,7 @@ function masterUse(tab,key){
   }
   if(tab==='usage'){
     const rooms=S.rooms.filter(r=>r.caps[key]).length, cl=S.classes.filter(c=>c.status==='active'&&c.kind===key).length;
-    return {n:rooms+cl,text:[rooms?`${rooms} مكان`:'',cl?`${cl} حصة`:''].filter(Boolean).join(' · '),core:CORE_USAGE.includes(key)};
+    return {n:rooms+cl,text:[rooms?`${rooms} مكان`:'',cl?`${cl} محاضرة أو حجز`:''].filter(Boolean).join(' · '),core:CORE_USAGE.includes(key)};
   }
   if(tab==='kinds'){ const n=S.rooms.filter(r=>r.kind===key).length; return {n,text:n?`${n} مكان`:''}; }
   const n=S.rooms.filter(r=>r.building===key).length; return {n,text:n?`${n} مكان`:''};
@@ -1244,7 +1247,7 @@ function drawerOccurrence(c,date){
       <dt>المكان المعتاد</dt><dd>${c.mode==='online'?'أونلاين':c.roomId?esc(room(c.roomId).name):'—'}</dd>
       ${c.exceptional?`<dt>الجهة</dt><dd>${esc(c.organizer)}</dd>`:`<dt>المحاضر</dt><dd>${esc(person(c.instructor).name)}</dd><dt>الطلاب</dt><dd>${esc(audName(c))} · ${esc(groupTxt(c))}</dd>`}
     </dl>
-    <div class="row-actions"><button class="btn sm" data-act="openClass" data-id="${c.id}">عرض الحصة الأسبوعية وإدارتها</button></div>
+    <div class="row-actions"><button class="btn sm" data-act="openClass" data-id="${c.id}">عرض الموعد الأسبوعي وإدارته</button></div>
   </div>`;
 }
 function drawerClass(c){
@@ -1261,7 +1264,7 @@ function drawerClass(c){
       <dt>طريقة التدريس</dt><dd>${c.exceptional||c.status!=='active'?MODE[c.mode]:`<select data-chg="mode" data-id="${c.id}" aria-label="طريقة التدريس">${Object.entries(MODE).map(([k,t])=>`<option value="${k}"${c.mode===k?' selected':''}>${t}</option>`).join('')}</select>`}</dd>
       <dt>المكان الحالي</dt><dd>${c.mode==='online'?'أونلاين — لا تحتاج إلى مكان':c.roomId?`${esc(room(c.roomId).name)} · ${fit.ok?scoreHtml(fit.score):'<span style="color:var(--bad)">غير مناسب</span>'}`:'<span style="color:var(--bad)">بدون مكان</span>'}</dd>
     </dl>
-    ${c.release?`<div class="warnbox">غيّر نظام إدارة المواد هذه الحصة (${esc(c.release.text)}). سيظل المكان محجوزًا حتى تؤكد من صفحة الطلبات.</div>`:''}
+    ${c.release?`<div class="warnbox">غيّر نظام إدارة المواد هذا الموعد (${esc(c.release.text)}). سيظل المكان محجوزًا حتى تؤكد من صفحة الطلبات.</div>`:''}
     ${c.pending?`<div class="infobox">هذا توزيع مقترح من النظام لطلب وارد من نظام إدارة المواد. يمكنك تغيير الموعد أو المكان هنا، ويتم الاعتماد من صفحة الطلبات.</div>`:''}
     ${conf.length?`<div class="badbox"><b>تعارضات:</b><br>${conf.map(esc).join('<br>')}</div>`:''}
     ${c.displaced&&!c.roomId?`<div class="warnbox">أُزيلت من ${esc(c.displaced)} بسبب تغيير حالة المكان.</div>`:''}
@@ -1269,7 +1272,7 @@ function drawerClass(c){
       ${c.status==='active'?(q.mandatory?`<button class="btn sm" data-act="override" data-id="${c.id}" data-eq="${q.eq}">إلغاء الإلزام</button>`:q.overridden?`<button class="btn sm ghost" data-act="unoverride" data-id="${c.id}" data-eq="${q.eq}">إعادة الإلزام</button>`:'<span></span>'):'<span></span>'}
       ${q.reason?`<small>${q.mandatory?'سبب الإلزام':'ملاحظة'}: ${esc(q.reason)}</small>`:''}${q.overridden?`<small style="color:var(--warn)">أُلغي الإلزام لهذا الطلب: ${esc(q.overridden)}</small>`:''}</div>`).join(''):'<div class="meta">لا توجد متطلبات.</div>'}</div></section>
     ${S.oneoffs.some(o=>o.classId===c.id)?`<section><div class="sec-title">تغييرات لمرة واحدة</div><div class="card">${S.oneoffs.filter(o=>o.classId===c.id).map(o=>`<div class="req"><span>${dateLabel(o.date)}: ${o.type==='cancel'?'ملغية':`نُقلت إلى ${dateLabel(o.newDate)} ${SLOTS[o.newSlot]}${o.roomId?' في '+esc(room(o.roomId).name):''}`}</span><span></span>${o.reason?`<small>${esc(o.reason)}</small>`:''}</div>`).join('')}</div></section>`:''}
-    ${c.status==='active'?`<div class="row-actions">${c.roomId?`<button class="btn sm" data-act="unassign" data-id="${c.id}">إزالة المكان (تعود إلى الانتظار)</button>`:''}${c.exceptional?`<button class="btn sm danger" data-act="cancelTerm" data-id="${c.id}">إلغاء الحجز</button>`:`<button class="btn sm danger" data-act="cancelTerm" data-id="${c.id}">إلغاء الحصة للترم</button>`}</div>`:''}
+    ${c.status==='active'?`<div class="row-actions">${c.roomId?`<button class="btn sm" data-act="unassign" data-id="${c.id}">إزالة المكان (تعود إلى الانتظار)</button>`:''}${c.exceptional?`<button class="btn sm danger" data-act="cancelTerm" data-id="${c.id}">إلغاء الحجز</button>`:`<button class="btn sm danger" data-act="cancelTerm" data-id="${c.id}">إلغاء الموعد للترم كله</button>`}</div>`:''}
     ${rec?`<section><div class="sec-title">اقتراحات الأماكن (${rec.ok.length} مناسب)</div><div class="card">${rec.ok.length?rec.ok.map(({r,e})=>`<div class="cand"><div><b>${esc(r.name)}</b> <span class="meta">${roomWhere(r)}</span>${c.roomId===r.id?' '+pill('الحالي','acc'):''}<div class="meta">السعة ${e.cap.min}–${e.cap.max} · المطلوب ${e.need} · ${scoreHtml(e.score)}</div><div>${evalTags(e)||'<span class="tag">كل المتطلبات موجودة</span>'}</div></div>
       ${c.roomId===r.id?'':`<button class="btn sm primary" data-act="assign" data-c="${c.id}" data-r="${r.id}">${c.roomId?'انقلها إلى هنا':'احجز'}</button>`}</div>`).join(''):'<div class="empty">لا يوجد مكان مناسب متاح في هذا الموعد. ستبقى المادة في الانتظار، وسيصلك إشعار فور توفر مكان مناسب.</div>'}</div>
       <details style="margin-top:8px"><summary>أماكن مستبعدة وسبب الاستبعاد (${rec.no.length})</summary><div class="card" style="margin-top:6px">${rec.no.map(({r,e})=>`<div class="cand"><div><b>${esc(r.name)}</b><div class="meta">${esc(e.reason)}</div></div></div>`).join('')}</div></details></section>`:''}
@@ -1302,7 +1305,7 @@ function drawerRoom(r){
     ${r.devices?`<section><div class="sec-title">الأجهزة</div><div class="card row-actions" style="justify-content:space-between"><span>العاملة <b class="num">${r.devices.working}</b> من <span class="num">${r.devices.total}</span></span><span class="row-actions"><button class="btn sm" data-act="dev" data-id="${r.id}" data-d="-1" aria-label="تسجيل عطل جهاز">تسجيل عطل جهاز</button><button class="btn sm" data-act="dev" data-id="${r.id}" data-d="1" aria-label="تسجيل إصلاح جهاز">تسجيل إصلاح جهاز</button></span></div></section>`:''}
     <section><div class="sec-title">الأدوات وحالتها</div><div class="card">${Object.entries(r.equipment).map(([e,s])=>`<div class="eq-row"><span>${EQ[e]} ${s==='ok'?pill('يعمل','ok'):pill('معطل','bad')}</span><span class="row-actions"><button class="btn sm" data-act="toggleEq" data-id="${r.id}" data-eq="${e}">${s==='ok'?'تسجيل عطل':'تسجيل إصلاح'}</button><button class="btn sm ghost" data-act="delEq" data-id="${r.id}" data-eq="${e}">حذف</button></span></div>`).join('')}
       <div class="row-actions" style="margin-top:8px"><select id="addeq-${r.id}" aria-label="أداة جديدة">${Object.entries(EQ).filter(([e])=>!r.equipment[e]).map(([e,t])=>`<option value="${e}">${t}</option>`).join('')}</select><button class="btn sm" data-act="addEq" data-id="${r.id}">إضافة أداة</button></div></div></section>
-    <section><div class="sec-title">جدول المكان (${list.length} حصة)</div><div class="tbl-wrap"><table class="mini"><thead><tr><th></th>${SLOTS.map(s=>`<th>${s}</th>`).join('')}</tr></thead><tbody>${DAYS.map((d,di)=>`<tr><th>${d}</th>${SLOTS.map((_,si)=>{ const c=occupant(r.id,di,si); return c?`<td class="busy"><button class="btn sm ghost" style="padding:0;border:0;color:inherit" data-act="openClass" data-id="${c.id}">${esc(shortLabel(c))}</button></td>`:'<td></td>'; }).join('')}</tr>`).join('')}</tbody></table></div></section>
+    <section><div class="sec-title">جدول المكان (${list.length} موعد)</div><div class="tbl-wrap"><table class="mini"><thead><tr><th></th>${SLOTS.map(s=>`<th>${s}</th>`).join('')}</tr></thead><tbody>${DAYS.map((d,di)=>`<tr><th>${d}</th>${SLOTS.map((_,si)=>{ const c=occupant(r.id,di,si); return c?`<td class="busy"><button class="btn sm ghost" style="padding:0;border:0;color:inherit" data-act="openClass" data-id="${c.id}">${esc(shortLabel(c))}</button></td>`:'<td></td>'; }).join('')}</tr>`).join('')}</tbody></table></div></section>
   </div>`;
 }
 
@@ -1348,7 +1351,7 @@ const ACT={
   },
   async cancelTerm(d){
     const c=cls(d.id);
-    const v=await ask({title:c.exceptional?'إلغاء الحجز':'إلغاء الحصة للترم',body:`<p class="meta">${esc(label(c))} · ${when(c)}</p>`,fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'إلغاء',danger:true});
+    const v=await ask({title:c.exceptional?'إلغاء الحجز':'إلغاء الموعد للترم كله',body:`<p class="meta">${esc(label(c))} · ${when(c)}</p>`,fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'إلغاء',danger:true});
     if(!v) return;
     c.status='cancelled'; log('إلغاء',`${label(c)} (${when(c)})`,v.reason); notifyPeople(c,`أُلغيت ${label(c)}`);
     releaseRoom(c,`أُلغيت ${label(c)}`); render(); toast('أُلغيت، وعُرض المكان على المواد التي تحتاجه');
@@ -1368,13 +1371,13 @@ const ACT={
         if(r.action==='cancel'){ c.status='cancelled'; c.pending=false; notifyPeople(c,`أُلغيت ${label(c)}`); }
         releaseRoom(c,`${label(c)} ${r.action==='cancel'?'أُلغيت':'أصبحت أونلاين'} (بتأكيد الموظف)`);
       }
-      q.status='approved'; log('تأكيد تحرير أماكن',`${course(q.courseId).code} ${course(q.courseId).name}: ${q.classIds.length} حصة`,q.text);
+      q.status='approved'; log('تأكيد تحرير أماكن',`${course(q.courseId).code} ${course(q.courseId).name}: ${mix(q.classIds.map(cls))}`,q.text);
       go('notifications'); toast('تم تحرير الأماكن. الاقتراحات للمواد التي تحتاجها في الإشعارات، والقرار لك.'); return;
     }
     if(q.type==='cm'){
       const cs=q.classIds.map(cls).filter(c=>c&&c.status==='active');
       const missing=cs.filter(c=>c.day==null||(c.mode!=='online'&&!c.roomId));
-      if(missing.length){ toast(`${missing.length} حصة بلا موعد أو مكان حتى الآن. اضغط "مراجعة / تغيير" عليها.`); return; }
+      if(missing.length){ toast(`${mix(missing)} بلا موعد أو مكان حتى الآن. اضغط "مراجعة / تغيير" عليها.`); return; }
       cs.forEach(c=>{ c.pending=false; notifyPeople(c,`${label(c)}: ${when(c)}${c.roomId?' في '+room(c.roomId).name:''} · ${weeksText(c)}`); });
       q.status='approved'; log('اعتماد توزيع',`${course(q.courseId).code} ${course(q.courseId).name}: ${cs.map(c=>`${shortLabel(c)} ← ${when(c)}${c.roomId?' '+room(c.roomId).name:''}`).join('، ')}`);
       toast('اعتُمد التوزيع وأُرسل إلى نظام إدارة المواد'); return;
@@ -1479,7 +1482,7 @@ const ACT={
      wasn't possible, with a reason, and Course Management decides what to change (split groups, mode, weeks) and resends. */
   async returnCM(d){
     const q=find(S.requests,d.id);
-    const v=await ask({title:'تعذّر التوزيع',body:'<p class="meta">لن تُلغى المادة. ستعود الحصص إلى نظام إدارة المواد مع السبب، ليقرر ما يلزم (تقسيم المجموعات، أو تغيير طريقة التدريس، أو تعديل الأسابيع) ثم يعيد الإرسال.</p>',fields:[
+    const v=await ask({title:'تعذّر التوزيع',body:'<p class="meta">لن تُلغى المادة. ستعود المحاضرات والسكاشن إلى نظام إدارة المواد مع السبب، ليقرر ما يلزم (تقسيم المجموعات، أو تغيير طريقة التدريس، أو تعديل الأسابيع) ثم يعيد الإرسال.</p>',fields:[
       {id:'cause',label:'السبب الرئيسي',type:'select',value:'capacity',options:Object.entries(RETURN_CAUSE)},
       {id:'reason',label:'التفاصيل',type:'textarea',required:true}],ok:'إعادة إلى إدارة المواد'});
     if(!v) return; const text=`${RETURN_CAUSE[v.cause]} — ${v.reason}`;
@@ -1507,7 +1510,7 @@ const ACT={
     if(v.status!=='available'){
       const hit=S.classes.filter(c=>c.status==='active'&&c.roomId===r.id);
       affectedNotice(r,hit,v.status==='maintenance'?'دخل الصيانة':'أُغلق');
-      toast(hit.length?`${hit.length} حصة في هذا المكان تحتاج إلى نقل. اقترح النظام بدائل في الإشعارات، والقرار لك.`:'تم حفظ الحالة');
+      toast(hit.length?`${mix(hit)} في هذا المكان تحتاج إلى نقل. اقترح النظام بدائل في الإشعارات، والقرار لك.`:'تم حفظ الحالة');
     } else if(['maintenance','closed'].includes(was)){
       freedCheckRoomAll(r.id,`${r.name} عادت متاحة`); toast('عاد المكان متاحًا، وعُرض على المواد التي تحتاجه');
     }
@@ -1536,7 +1539,7 @@ const ACT={
     let reason='';
     if(res.some(x=>x.level!=='ok')){
       render();
-      const v=await ask({title:'القاعة غير مناسبة لكل الحصص',body:prefResultHtml(res)+'<p class="meta">يمكنك المتابعة، لكن يجب كتابة السبب.</p>',fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'حفظ مع التحذير'});
+      const v=await ask({title:'القاعة غير مناسبة لكل المحاضرات',body:prefResultHtml(res)+'<p class="meta">يمكنك المتابعة، لكن يجب كتابة السبب.</p>',fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'حفظ مع التحذير'});
       if(!v) return; reason=v.reason;
     }
     const rank=S.preferred.filter(x=>x.roomId===p.roomId).length+1;
