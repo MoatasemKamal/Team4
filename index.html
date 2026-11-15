@@ -52,6 +52,10 @@ h1,h2,h3,h4{font-family:var(--font-display);margin:0;text-wrap:balance;line-heig
 .nav.ext:hover{color:var(--accent);border-color:var(--accent)}
 .rail-foot{margin-top:auto;font-size:12.5px;color:var(--muted);padding:10px;display:flex;flex-direction:column;gap:8px}
 main{flex:1;min-width:0;padding:24px 28px 60px}
+.topbar{display:flex;justify-content:flex-end;margin:-10px 0 4px}
+.bell{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-decoration:none}
+.bell:hover,.bell.on{border-color:var(--accent);color:var(--accent)}
+.bell-badge{position:absolute;top:-4px;inset-inline-end:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--bad);color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
 .page-head h2{font-size:24px}
 .page-head p{margin:2px 0 0;color:var(--muted)}
@@ -758,11 +762,11 @@ function evalTags(e){
 function renderRail(){
   const newReq=S.requests.filter(q=>q.status==='new').length;
   const openN=S.notifications.filter(n=>n.open).length;
-  const badges={requests:newReq+openN};
+  const badges={requests:newReq};
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${esc((S.university||'جامعة الإسكندرية')+' · '+((S.faculty&&S.faculty.name)||''))}<br>${S.term.name} · موظف التوزيع</small></div>`+
     `<nav aria-label="القائمة" style="display:contents">`+NAV_GROUPS.map(g=>`<div class="nav-group" role="presentation">${g.t}</div>`+g.items.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')).join('')+
     `<a class="nav ext" href="course-management/"><span>إدارة المواد الدراسية</span><span aria-hidden="true">↖</span></a></nav>`+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 10:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 11:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -840,11 +844,21 @@ function attentionPanels(){
     <div class="stack">${side||'<section class="panel"><div class="empty">كل المواد الحضورية لها أماكن، ولا توجد تعارضات.</div></section>'}</div>
   </div>`;
 }
+/* Bell count: open notifications plus classes that need a decision. */
+function attentionCount(){ return S.notifications.filter(n=>n.open).length+S.classes.filter(c=>['waiting','issue','unscheduled'].includes(classStatus(c))).length; }
+function topbar(){
+  const n=attentionCount(), on=S.ui.view==='notifications';
+  return `<div class="topbar"><a class="bell${on?' on':''}" href="#notifications" aria-label="الإشعارات${n?` (${n})`:''}" title="الإشعارات"${on?' aria-current="page"':''}>
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    ${n?`<span class="bell-badge">${n}</span>`:''}</a></div>`;
+}
+function viewNotifications(){
+  return `<div class="page-head"><div><h2>الإشعارات</h2><p>تنبيهات النظام والمواد التي تحتاج إلى قرارك: أماكن أصبحت متاحة، ومواد متأثرة بالصيانة، وتحديثات إدارة المواد، ومواد بلا مكان.</p></div></div>
+  ${attentionPanels()||'<div class="empty">لا توجد إشعارات ولا مواد تحتاج إلى قرار.</div>'}`;
+}
 function viewRequests(){
   const f=S.ui.reqFilter; const list=S.requests.filter(q=>f==='all'||q.status===f);
-  return `<div class="page-head"><div><h2>الطلبات</h2><p>الإشعارات والمواد التي تحتاج إلى قرارك، ثم الطلبات الواردة بتفاصيلها. يجب كتابة سبب أي رفض.</p></div></div>
-  ${attentionPanels()}
-  <div class="inline" style="justify-content:space-between;margin-bottom:10px"><h3 id="h-req" style="margin:0">الطلبات الواردة <span class="count">${S.requests.filter(q=>q.status==='new').length}</span></h3>
+  return `<div class="page-head"><div><h2>الطلبات</h2><p>تصلك هنا جميع الطلبات بتفاصيلها، ويجب كتابة سبب أي رفض.</p></div>
   <div class="row-actions" role="group" aria-label="تصفية"><button class="btn sm ${f==='new'?'primary':''}" data-act="reqFilter" data-v="new">جديدة</button><button class="btn sm ${f==='all'?'primary':''}" data-act="reqFilter" data-v="all">الكل</button></div></div>
   <div class="stack">${list.length?list.map(reqCard).join(''):'<div class="empty">لا توجد طلبات جديدة.</div>'}</div>`;
 }
@@ -1186,8 +1200,8 @@ function drawerRoom(r){
 function render(){
   renderRail();
   const v=S.ui.view;
-  const html={dashboard:viewDashboard,requests:viewRequests,schedule:viewSchedule,calendar:viewCalendar,rooms:viewRooms,preferred:viewPreferred,master:viewMaster,log:viewLog,settings:viewSettings}[v]||viewDashboard;
-  $('#main').innerHTML=html();
+  const html={notifications:viewNotifications,dashboard:viewDashboard,requests:viewRequests,schedule:viewSchedule,calendar:viewCalendar,rooms:viewRooms,preferred:viewPreferred,master:viewMaster,log:viewLog,settings:viewSettings}[v]||viewDashboard;
+  $('#main').innerHTML=topbar()+html();
   const dr=S.ui.drawer; const root=$('#drawer-root');
   const prev=$('#drawer-body')?.scrollTop||0;
   if(!dr){ root.innerHTML=''; return; }
@@ -1200,7 +1214,7 @@ function render(){
 }
 const _render=render; render=function(){ _render(); persist(); };
 function go(view){ if(location.hash!=='#'+view) location.hash=view; else { S.ui.view=view; render(); } }
-function syncHash(){ const h=location.hash.slice(1); S.ui.view=NAV.some(([k])=>k===h)?h:'requests'; S.ui.drawer=null; $('#drawer-root').dataset.key=''; render(); window.scrollTo(0,0); }
+function syncHash(){ const h=location.hash.slice(1); S.ui.view=NAV.some(([k])=>k===h)||h==='notifications'?h:'requests'; S.ui.drawer=null; $('#drawer-root').dataset.key=''; render(); window.scrollTo(0,0); }
 
 /* ============ Actions ============ */
 const ACT={
@@ -1245,7 +1259,7 @@ const ACT={
         releaseRoom(c,`${label(c)} ${r.action==='cancel'?'أُلغيت':'أصبحت أونلاين'} (بتأكيد الموظف)`);
       }
       q.status='approved'; log('تأكيد تحرير أماكن',`${course(q.courseId).code} ${course(q.courseId).name}: ${q.classIds.length} حصة`,q.text);
-      go('requests'); toast('تم تحرير الأماكن. الاقتراحات للمواد التي تحتاجها في الإشعارات أعلى صفحة الطلبات، والقرار لك.'); return;
+      go('notifications'); toast('تم تحرير الأماكن. الاقتراحات للمواد التي تحتاجها في الإشعارات، والقرار لك.'); return;
     }
     if(q.type==='cm'){
       const cs=q.classIds.map(cls).filter(c=>c&&c.status==='active');
@@ -1258,7 +1272,7 @@ const ACT={
     if(q.type==='online'){
       const c=cls(q.classId); c.mode='online'; q.status='approved';
       log('اعتماد طلب',`تحويل ${label(c)} أونلاين للترم`,q.text); notifyPeople(c,`${label(c)} أصبحت أونلاين`);
-      releaseRoom(c,`${label(c)} حُوّلت إلى أونلاين`); go('requests'); render(); toast('تم التحويل إلى أونلاين. راجع إشعار المكان الذي أصبح متاحًا.'); return;
+      releaseRoom(c,`${label(c)} حُوّلت إلى أونلاين`); go('notifications'); render(); toast('تم التحويل إلى أونلاين. راجع إشعار المكان الذي أصبح متاحًا.'); return;
     }
     if(q.type==='cancel_once'){
       const c=cls(q.classId); q.status='approved';
@@ -1382,7 +1396,7 @@ const ACT={
     if(v.status!=='available'){
       const hit=S.classes.filter(c=>c.status==='active'&&c.roomId===r.id);
       affectedNotice(r,hit,v.status==='maintenance'?'دخل الصيانة':'أُغلق');
-      toast(hit.length?`${hit.length} حصة في هذا المكان تحتاج إلى نقل. اقترح النظام بدائل في الإشعارات أعلى صفحة الطلبات، والقرار لك.`:'تم حفظ الحالة');
+      toast(hit.length?`${hit.length} حصة في هذا المكان تحتاج إلى نقل. اقترح النظام بدائل في الإشعارات، والقرار لك.`:'تم حفظ الحالة');
     } else if(['maintenance','closed'].includes(was)){
       freedCheckRoomAll(r.id,`${r.name} عادت متاحة`); toast('عاد المكان متاحًا، وعُرض على المواد التي تحتاجه');
     }
