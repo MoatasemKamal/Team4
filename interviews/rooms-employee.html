@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>مقابلة موظف توزيع القاعات والمعامل</title>
+<title>مقابلة مسؤول توزيع القاعات والمعامل</title>
 <style>
 :root{--bg:#f3f7fc;--card:#fff;--ink:#19314f;--muted:#5c7088;--line:#d8e3f0;--accent:#12588e;--soft:#eaf3fd;--gold:#bf944b;--ok:#1b7743}
 *{box-sizing:border-box}
@@ -91,7 +91,7 @@ const SECTIONS=[
   'هل هناك شيء آخر يجب أن نعرفه؟',
   'من الشخص الذي تنصحنا بسؤاله أيضًا؟']]
 ];
-const INFO=[['name','اسم الموظف'],['role','الوظيفة / الجهة'],['date','تاريخ المقابلة'],['by','أجرى المقابلة']];
+const INFO=[['name','اسم المسؤول'],['role','الوظيفة / الجهة'],['date','تاريخ المقابلة'],['by','أجرى المقابلة']];
 let S={info:{},answers:{}};
 try{ S=JSON.parse(document.getElementById('state').textContent)||S; }catch(e){}
 const LS='team4.rooms.interview.draft.v3';
@@ -100,7 +100,7 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const TOTAL=SECTIONS.reduce((n,s)=>n+s[2].length,0);
 function render(){
   let n=0,h=`<div class="card head"><div class="org">جامعة الإسكندرية · كلية إدارة الأعمال · E-MISEM</div>
-  <h1>مقابلة موظف توزيع القاعات والمعامل</h1>
+  <h1>مقابلة مسؤول توزيع القاعات والمعامل</h1>
   <p class="lead">${TOTAL} سؤالًا قصيرًا عن طريقة العمل الحالية: ماذا يحدث فعلًا اليوم.</p>
   <div class="tips"><b>أثناء المقابلة:</b> اطلب مثالًا حقيقيًا ("آخر مرة حدث ذلك...")، واكتب الأرقام كما قالها، واطلب نسخة من أي نموذج أو جدول يذكره.</div>
   <div class="grid">${INFO.map(([k,l])=>`<label class="f">${l}<input data-info="${k}" value="${esc(S.info[k])}" ${k==='date'?'placeholder="مثال: 17 نوفمبر 2026"':''}></label>`).join('')}</div></div>`;
@@ -146,7 +146,7 @@ document.addEventListener('focusout',e=>{ if(e.target.matches('textarea,input'))
 document.addEventListener('click',async e=>{
   const id=e.target.id;
   if(id==='copy'){
-    let n=0,out=`مقابلة موظف توزيع القاعات والمعامل\n${INFO.map(([k,l])=>`${l}: ${S.info[k]||''}`).join('\n')}\n`;
+    let n=0,out=`مقابلة مسؤول توزيع القاعات والمعامل\n${INFO.map(([k,l])=>`${l}: ${S.info[k]||''}`).join('\n')}\n`;
     SECTIONS.forEach(([t,,qs],si)=>{ out+=`\n${si+1}. ${t}\n`; qs.forEach(q=>{ n++; out+=`\n${n}. ${q}\n${(S.answers[n]||'').trim()||'—'}\n`; }); });
     try{ await navigator.clipboard.writeText(out); e.target.textContent='نُسخ ✓'; setTimeout(()=>e.target.textContent='نسخ الأسئلة والإجابات',1800); }
     catch(_){ e.target.textContent='تعذّر النسخ'; }
