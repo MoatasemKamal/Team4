@@ -182,7 +182,7 @@ const NAV_GROUPS=[
   {t:'الإعداد',items:[['master','البيانات الأساسية'],['settings','الإعدادات']]}
 ];
 const NAV=NAV_GROUPS.flatMap(g=>g.items);
-const VERSION='النسخة: 14 نوفمبر 23:00';
+const VERSION='النسخة: 15 نوفمبر 12:00';
 const PTYPE_ITEM={core:'إجبارية',elective:'اختيارية'};
 
 /* ============ Seed data: كلية إدارة الأعمال (sample) ============ */
@@ -271,7 +271,7 @@ function seed(){
   const L2=(letter,n,who)=>Object.fromEntries(Array.from({length:n},(_,i)=>[`L2-${letter}${i+1}`,who]));
   st.offerings=[
     O('bus101',['ar-1'],{L1:'d5',L2:'d5'},{},{send:true}),
-    O('acc101',['ar-1'],{L1:'d7',L2:'d8'},{section:'m1'},{gs:L2('S',6,'m5')}),
+    O('acc101',['ar-1'],{L1:'d7',L2:'d8'},{section:'m1'},{gs:L2('S',6,'m5'),send:true}),
     O('eco101',['ar-1'],{L1:'d3',L2:'d3'},{section:'m2'},{gs:L2('S',6,'m7')}),
     O('eco201',['ar-2'],{L1:'d4',L2:'d4'},{},{send:true}),
     O('bus201',['ar-2'],{L1:'d1',L2:'d1'},{},{send:true}),
@@ -859,7 +859,7 @@ function boot(fresh){
   const saved=fresh?null:store.get(SAVE_KEY);
   if(saved&&saved.version===5){ S={...saved,ui:freshUI()}; return; }
   S=seed(); S.ui=freshUI();
-  for(const o of S.offerings) if(o._send){ send(o); o.sentAt='10 نوفمبر'; delete o._send; }
+  for(const o of S.offerings) if(o._send){ send(o); o.sentAt=o.id==='of_acc101_ar'?'19 سبتمبر':'10 نوفمبر'; delete o._send; }
   S.lastSendAt='10 نوفمبر';
   // Sample of "changed after sending": student registration grew after BUS201 was sent.
   const b=S.offerings.find(o=>o.id==='of_bus201_ar'); b.students=520;
