@@ -119,6 +119,9 @@ textarea{min-height:80px;width:100%;resize:vertical}
 .rq h4{font-size:15.5px;margin:8px 0 4px}
 .rq .facts{display:flex;flex-wrap:wrap;gap:2px 0;color:var(--muted);font-size:13px}
 .rq .facts span:not(:last-child)::after{content:"·";margin:0 8px;color:var(--line)}
+.rq-when{display:flex;flex-wrap:wrap;gap:8px 28px;margin:10px 0 2px}
+.rq-when dt{font-size:12px;color:var(--muted)}
+.rq-when dd{margin:2px 0 0;font-weight:600;font-size:14.5px}
 .rq .quote{margin:10px 0 0;padding:8px 12px;background:var(--surface-2);border-inline-start:3px solid var(--line);border-radius:6px;font-size:14px}
 .req-sess{margin-top:12px}
 .req-sess summary{margin-bottom:8px}
@@ -237,7 +240,7 @@ html.modal-open,html.modal-open body{overflow:hidden}
 'use strict';
 /* ============ Constants ============ */
 const DAYS=['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
-const SLOTS=['9–11','11–1','1–3','3–5'];
+const SLOTS=['09:00 – 11:00','11:00 – 13:00','13:00 – 15:00','15:00 – 17:00'];
 const MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const DEF_ROOMKIND={hall:'قاعة',amphi:'مدرج',lab:'معمل',sectionRoom:'غرفة سكاشن',meeting:'قاعة اجتماعات'};
 const DEF_EQ={projector:'بروجكتور',mic:'ميكروفون وسماعات',ac:'تكييف',internet:'إنترنت',smartboard:'سبورة ذكية',camera:'كاميرا بث',computers:'أجهزة كمبيوتر',excel:'Microsoft Excel',spss:'SPSS',accsoft:'برنامج محاسبي (ERP)'};
@@ -335,7 +338,7 @@ function seed(){
       {id:'q6',type:'shift',from:'d4',date:'17 سبتمبر',status:'new',targetDate:'2026-09-22',classIds:['k3','k4'],preferred:{date:'2026-09-24',slot:0},text:'يشارك عدد كبير من طلاب الفرقة الثانية في ماراثون خارج الجامعة يوم الثلاثاء، لذا قررت نقل محاضرات اليوم كله.'},
       {id:'q1',type:'online',from:'d1',date:'15 سبتمبر',status:'new',classId:'k5',scope:'term',text:'ستُدرَّس المجموعة الأولى أونلاين بقية الترم بسبب سفري إلى مؤتمر علمي.'},
       {id:'q3',type:'maintenance',from:'m3',date:'16 سبتمبر',status:'new',roomId:'r10',devicesBroken:2,text:'جهازان في معمل الحاسب 1 لا يعملان (رقم 7 و12).'},
-      {id:'q4',type:'exceptional',from:'p1',date:'16 سبتمبر',status:'new',text:'مناقشة رسالة ماجستير، والحضور نحو 25 فردًا.',payload:{title:'مناقشة رسالة ماجستير — قسم المحاسبة',organizer:'إدارة الدراسات العليا',kind:'defense',students:25,day:5,slot:2,reqs:[{eq:'projector',mandatory:true,reason:'عرض الرسالة'}]}},
+      {id:'q4',type:'exceptional',from:'p1',date:'16 سبتمبر',status:'new',text:'مناقشة رسالة ماجستير، والحضور نحو 25 فردًا.',payload:{title:'مناقشة رسالة ماجستير — قسم المحاسبة',organizer:'إدارة الدراسات العليا',kind:'defense',students:25,date:'2026-09-24',day:5,slot:2,reqs:[{eq:'projector',mandatory:true,reason:'عرض الرسالة'}]}},
       {id:'q5',type:'cancel_once',from:'d7',date:'16 سبتمبر',status:'new',classId:'k7',when:'الأحد 20 سبتمبر',onDate:'2026-09-20',text:'حضور اجتماع مجلس الكلية في الموعد نفسه، وستُعوَّض المحاضرة لاحقًا.'}
     ],
     notifications:[
@@ -807,7 +810,7 @@ function renderRail(){
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${esc((S.university||'جامعة الإسكندرية')+' · '+((S.faculty&&S.faculty.name)||''))}<br>${S.term.name} · موظف التوزيع</small></div>`+
     `<nav aria-label="القائمة" style="display:contents">`+NAV_GROUPS.map(g=>`<div class="nav-group" role="presentation">${g.t}</div>`+g.items.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')).join('')+
     `<a class="nav ext" href="course-management/"><span>إدارة المواد الدراسية</span><span aria-hidden="true">↖</span></a></nav>`+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 17:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 18:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -929,28 +932,43 @@ function cmSessionsTable(q){
       return `<tr class="sess-group"><td colspan="6">${head}</td></tr>`+rows.map(row).join(''); }).join('')}
   </tbody></table></div>`;
 }
+/* Next date (on or after the term start and after today) that falls on weekday d. */
+const nextOn=d=>{ let x=addDays(S.today<S.term.start?addDays(S.term.start,-1):S.today,1); for(let i=0;i<7&&dayIdx(x)!==d;i++) x=addDays(x,1); return x; };
+/* The explicit date and time of each request, shown as labelled fields on the card. */
+function reqWhen(q){
+  if(q.type==='cm'||q.type==='cm_change'){ const cs=q.classIds.map(cls).filter(c=>c&&c.day!=null); if(!cs.length) return [];
+    const first=cs.map(c=>weekDate(wk(c)[0],c.day)).sort()[0], last=cs.map(c=>weekDate(wk(c)[1],c.day)).sort().pop();
+    return [['أول حصة',dateLabel(first)],['آخر حصة',dateLabel(last)],['عدد الحصص',`${q.classIds.length} حصة`]]; }
+  if(q.type==='shift') return [['التاريخ',dateLabel(q.targetDate)],['الأوقات',q.classIds.map(id=>SLOTS[cls(id).slot]).join('، ')],['الموعد المفضّل',q.preferred?`${dateLabel(q.preferred.date)} · ${SLOTS[q.preferred.slot]}`:'لم يحدد']];
+  if(q.type==='online'){ const c=cls(q.classId); return [['الموعد الأسبوعي',`${DAYS[c.day]} · ${SLOTS[c.slot]}`],['من',dateLabel(nextOn(c.day))],['حتى',dateLabel(weekDate(wk(c)[1],c.day))]]; }
+  if(q.type==='cancel_once'){ const c=cls(q.classId); return [['التاريخ',q.onDate?dateLabel(q.onDate):q.when],['الوقت',SLOTS[c.slot]]]; }
+  if(q.type==='booking'||q.type==='exceptional'){ const p=q.payload; return [['التاريخ',dateLabel(p.date||nextOn(p.day))],['الوقت',SLOTS[p.slot]]]; }
+  if(q.type==='maintenance') return [['تاريخ البلاغ',q.date]];
+  return [];
+}
 function reqCard(q){
   const fromName=q.fromLabel||person(q.from).name; let title='', facts=[], approve='اعتماد', extra='';
   if(q.type==='cm'||q.type==='cm_change'){ const co=course(q.courseId); const cs=q.classIds.map(cls).filter(Boolean); title=`${co.code} · ${co.name}`;
-    if(q.type==='cm'){ const ws=cs.map(wk); facts=[cs[0]?audName(cs[0]):'',`${cs.length} حصة`,cs.length?`من ${shortDate(weekDate(Math.min(...ws.map(w=>w[0])),0))} إلى ${shortDate(weekDate(Math.max(...ws.map(w=>w[1])),5))}`:''].filter(Boolean); approve='اعتماد التوزيع';
+    if(q.type==='cm'){ facts=[cs[0]?audName(cs[0]):''].filter(Boolean); approve='اعتماد التوزيع';
       const prop=cs.filter(c=>c.status!=='cancelled'&&c.day!=null&&(c.roomId||c.mode==='online')).length, none=cs.filter(c=>c.status!=='cancelled'&&(c.day==null||(!c.roomId&&c.mode!=='online'))).length;
       extra=`<details class="req-sess"${q.status==='new'?' open':''}><summary>الحصص (${cs.length})${q.status==='new'?` · ${pill(`${prop} مقترح`,'acc')}${none?' '+pill(`${none} بلا اقتراح`,'bad'):''}`:''}</summary>${cmSessionsTable(q)}</details>`; }
     else { facts=[`${cs.length} حصة`]; approve='تأكيد وتحرير الأماكن';
       extra=`<div style="margin-top:6px">${cs.map(c=>`<div class="cand"><div><b>${esc(label(c))}</b> <span class="meta">${when(c)}</span><div class="meta">${c.release?`${esc(c.release.text)} · تحجز حاليًا ${c.roomId?esc(room(c.roomId).name):'—'} · بعد التأكيد ${c.release.action==='online'?'ستصبح أونلاين':'ستُلغى'} وسيُعرض المكان على المواد التي تحتاجه`:'تم التأكيد'}</div></div><button class="btn sm ghost" data-act="openClass" data-id="${c.id}">التفاصيل</button></div>`).join('')}</div>`; } }
   if(q.type==='shift'){ const whole=q.classIds.length===personSessionsOn(q.from,q.targetDate).length+q.classIds.filter(id=>oneoffFor(id,q.targetDate)).length;
-    title=`نقل محاضرات ${dateLabel(q.targetDate)}`; facts=[whole?'اليوم كله':'جزء من اليوم',q.classIds.map(id=>shortLabel(cls(id))+' '+SLOTS[cls(id).slot]).join('، ')]; approve='مراجعة واختيار المواعيد';
-    if(q.preferred) facts.push(`الموعد المفضّل: ${dateLabel(q.preferred.date)} ${SLOTS[q.preferred.slot]}`); }
-  if(q.type==='online'){ const c=cls(q.classId); title=label(c); facts=[when(c),c.roomId?`حاليًا في ${room(c.roomId).name}`:(c.mode==='online'?'أصبحت أونلاين':'بلا مكان'),'المدة: بقية الترم']; approve='اعتماد التحويل وتحرير المكان'; }
-  if(q.type==='cancel_once'){ const c=cls(q.classId); title=label(c); facts=[q.when,c.roomId?room(c.roomId).name:'—']; approve='اعتماد الإلغاء'; }
-  if(q.type==='booking'){ const p=q.payload; title=`${course(p.courseId).name} — ${S.usage[p.kind]} ${p.group}`; facts=[`${p.students} طالب`,`${DAYS[p.day]} ${SLOTS[p.slot]}`,person(p.instructor).name]; approve='اعتماد واختيار مكان'; }
-  if(q.type==='exceptional'){ const p=q.payload; title=S.usage[p.kind]; facts=[`${p.students} فرد`,`${DAYS[p.day]} ${SLOTS[p.slot]}`,`المتطلبات: ${p.reqs.map(x=>EQ[x.eq]+(x.mandatory?' (إلزامي)':'')).join('، ')||'—'}`]; approve='اعتماد واختيار مكان'; }
+    title=`نقل محاضرات ${dateLabel(q.targetDate)}`; facts=[whole?'اليوم كله':'جزء من اليوم',q.classIds.map(id=>shortLabel(cls(id))).join('، ')]; approve='مراجعة واختيار المواعيد'; }
+  if(q.type==='online'){ const c=cls(q.classId); title=label(c); facts=[c.roomId?`حاليًا في ${room(c.roomId).name}`:(c.mode==='online'?'أصبحت أونلاين':'بلا مكان'),'المدة: بقية الترم']; approve='اعتماد التحويل وتحرير المكان'; }
+  if(q.type==='cancel_once'){ const c=cls(q.classId); title=label(c); facts=[c.roomId?room(c.roomId).name:'—']; approve='اعتماد الإلغاء'; }
+  if(q.type==='booking'){ const p=q.payload; title=`${course(p.courseId).name} — ${S.usage[p.kind]} ${p.group}`; facts=[`${p.students} طالب`,person(p.instructor).name]; approve='اعتماد واختيار مكان'; }
+  if(q.type==='exceptional'){ const p=q.payload; title=S.usage[p.kind]; facts=[`${p.students} فرد`,`المتطلبات: ${p.reqs.map(x=>EQ[x.eq]+(x.mandatory?' (إلزامي)':'')).join('، ')||'—'}`]; approve='اعتماد واختيار مكان'; }
   if(q.type==='maintenance'){ title=room(q.roomId).name; facts=[`${q.devicesBroken} جهاز معطل`]; approve='تسجيل العطل'; }
+  const whenRows=reqWhen(q);
   const st=q.status==='new'?pill('جديد','acc'):q.status==='approved'?pill('معتمد','ok'):q.status==='returned'?pill('أُعيد إلى إدارة المواد','warn'):pill('مرفوض','bad');
   const late=q.type==='shift'&&q.status==='new'&&daysBetween(S.today,q.targetDate)<S.settings.minNotice;
   const second=q.type==='cm_change'?'':q.type==='cm'?`<button class="btn sm" data-act="returnCM" data-id="${q.id}">تعذّر التوزيع</button>`:`<button class="btn sm ghost danger" data-act="reject" data-id="${q.id}">رفض</button>`;
   return `<article class="card rq ${q.status==='new'?'stripe-acc':'stripe-off done'}" aria-label="${esc(REQ_TYPE[q.type]+': '+title)}">
     <div class="req-top"><span class="pill plain acc">${REQ_TYPE[q.type]}</span>${st}<span class="when">من ${esc(fromName)} · ${esc(q.date)}</span></div>
     <h4>${esc(title)}</h4>
+    ${whenRows.length?`<dl class="rq-when">${whenRows.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`:''}
     <div class="facts">${facts.map(x=>`<span>${esc(x)}</span>`).join('')}${late?`<span style="color:var(--warn)">ورد قبل الموعد بأقل من ${S.settings.minNotice} أيام</span>`:''}</div>
     ${q.text?`<p class="quote">${esc(q.text)}</p>`:''}
     ${q.reason?`<p class="meta" style="margin:8px 0 0"><b>${q.status==='returned'?'سبب تعذّر التوزيع':'سبب الرفض'}:</b> ${esc(q.reason)}</p>`:''}
@@ -1029,16 +1047,16 @@ function viewCalendar(){
   const people=S.people.filter(p=>p.role!=='coordinator');
   return `<div class="page-head"><div><h2>التقويم</h2><p>جميع المحاضرات في الأسبوع المختار، مع النقل والإلغاء والحجوزات اليدوية. اضغط "+ حجز" في أي خانة للحجز فيها.</p></div>
   <button class="btn primary" data-act="manualBook">حجز يدوي</button>
-  <div class="week-nav"><button class="btn sm" data-act="week" data-d="-7" aria-label="الأسبوع السابق">‹ السابق</button><b>${dateLabel(dates[0])} – ${dateLabel(dates[5])}</b><button class="btn sm" data-act="week" data-d="7" aria-label="الأسبوع الجاي">التالي ›</button><button class="btn sm ${ws===cur?'primary':''}" data-act="week" data-d="0">الأسبوع الحالي</button></div></div>
+  <div class="week-nav"><button class="btn sm" data-act="week" data-d="-7" aria-label="الأسبوع السابق">‹ السابق</button><b>${dateLabel(dates[0])} – ${dateLabel(dates[5])}</b><button class="btn sm" data-act="week" data-d="7" aria-label="الأسبوع الجاي">التالي ›</button><button class="btn sm ${ws===cur?'primary':''}" data-act="week" data-d="0">${S.today<S.term.start?'أول أسبوع':'الأسبوع الحالي'}</button></div></div>
   <div class="filters">
-    <label class="meta" style="display:flex;align-items:center;gap:6px">الأسبوع<select data-chg="calWeek" aria-label="اختر الأسبوع">${weeks.map((w,i)=>`<option value="${w}"${w===ws?' selected':''}>الأسبوع ${i+1} · ${dateLabel(w)}${w===cur?' (الحالي)':''}</option>`).join('')}${weekNo<1||weekNo>S.term.weeks?`<option value="${ws}" selected>خارج الترم · ${dateLabel(ws)}</option>`:''}</select></label>
+    <label class="meta" style="display:flex;align-items:center;gap:6px">الأسبوع<select data-chg="calWeek" aria-label="اختر الأسبوع">${weeks.map((w,i)=>`<option value="${w}"${w===ws?' selected':''}>الأسبوع ${i+1} · ${dateLabel(w)}${w===cur?(S.today<S.term.start?' (أول أسبوع)':' (الحالي)'):''}</option>`).join('')}${weekNo<1||weekNo>S.term.weeks?`<option value="${ws}" selected>خارج الترم · ${dateLabel(ws)}</option>`:''}</select></label>
     <label class="meta" style="display:flex;align-items:center;gap:6px">أو تاريخ<input type="date" data-chg="calDate" value="${ws}" aria-label="روح لأسبوع تاريخ معين"></label>
     <select data-chg="calF" data-k="building" aria-label="المبنى"><option value="">كل المباني</option>${S.buildings.map(b=>`<option value="${b.id}"${f.building===b.id?' selected':''}>${esc(b.name)}</option>`).join('')}</select>
     <select data-chg="calF" data-k="person" aria-label="المحاضر"><option value="">كل المحاضرين</option>${people.map(p=>`<option value="${p.id}"${f.person===p.id?' selected':''}>${esc(p.name)}</option>`).join('')}</select>
     <select data-chg="calF" data-k="cohort" aria-label="الفرقة"><option value="">كل الفرق</option>${S.cohorts.map(c=>`<option value="${c.id}"${f.cohort===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select>
     <select data-chg="calF" data-k="kind" aria-label="نوع الحصة"><option value="">كل الأنواع</option>${['lecture','section','lab'].map(k=>`<option value="${k}"${f.kind===k?' selected':''}>${S.usage[k]}</option>`).join('')}</select>
   </div>
-  <div class="legend"><span><b class="num" style="color:var(--ink)">${S.term.name} · ${weekNo>=1&&weekNo<=S.term.weeks?'الأسبوع '+weekNo:'خارج الترم'}${ws===cur?' (الحالي)':''}</b></span><span>${stats.live} حصة</span>${stats.shifted?`<span>${stats.shifted} منقولة إلى هذا الأسبوع</span>`:''}${stats.gone?`<span>${stats.gone} نُقلت إلى موعد آخر</span>`:''}${stats.cancelled?`<span>${stats.cancelled} ملغية</span>`:''}${stats.noroom?`<span style="color:var(--bad)">${stats.noroom} بدون مكان</span>`:''}</div>
+  <div class="legend"><span><b class="num" style="color:var(--ink)">${S.term.name} · ${weekNo>=1&&weekNo<=S.term.weeks?'الأسبوع '+weekNo:'خارج الترم'}${ws===cur?(S.today<S.term.start?` (يبدأ ${dateLabel(S.term.start)})`:' (الحالي)'):''}</b></span><span>${stats.live} حصة</span>${stats.shifted?`<span>${stats.shifted} منقولة إلى هذا الأسبوع</span>`:''}${stats.gone?`<span>${stats.gone} نُقلت إلى موعد آخر</span>`:''}${stats.cancelled?`<span>${stats.cancelled} ملغية</span>`:''}${stats.noroom?`<span style="color:var(--bad)">${stats.noroom} بدون مكان</span>`:''}</div>
   <div class="legend"><span><i style="background:var(--ok)"></i>حصة عادية</span><span><i style="background:var(--accent)"></i>منقولة إلى هذا الموعد</span><span><i style="background:var(--off)"></i>أونلاين، أو منقولة/ملغاة هذه المرة</span><span><i style="background:var(--bad)"></i>بدون مكان</span></div>
   <div class="tbl-wrap"><table class="grid"><thead><tr><th>اليوم</th>${SLOTS.map(s=>`<th class="num">${s}</th>`).join('')}</tr></thead>
   <tbody>${body}</tbody></table></div>`;
@@ -1236,8 +1254,8 @@ function drawerClass(c){
   return `<div class="drawer-head"><div><div class="meta">${c.exceptional?'حجز استثنائي':esc(co.code)}</div><h3 id="dr-t">${esc(label(c))}</h3><div style="margin-top:4px">${clsPill(c)}</div></div><button class="btn ghost" data-act="closeDrawer" aria-label="إغلاق">إغلاق</button></div>
   <div class="drawer-body" id="drawer-body">
     <dl class="kv">
-      <dt>الموعد الأسبوعي</dt><dd>${c.day==null&&c.status==='active'?timePicker(c):c.pending?`<b>${when(c)}</b> <span class="meta">(مقترح)</span>${timePicker(c,'غيّر الموعد')}`:when(c)}</dd>
-      <dt>التواريخ</dt><dd>${weeksText(c)}</dd>
+      <dt>${c.date&&c.until===c.date?'الموعد':'الموعد الأسبوعي'}</dt><dd>${c.day==null&&c.status==='active'?timePicker(c):c.pending?`<b>${when(c)}</b> <span class="meta">(مقترح)</span>${timePicker(c,'غيّر الموعد')}`:when(c)}</dd>
+      ${c.date&&c.until===c.date?'':`<dt>التواريخ</dt><dd>${weeksText(c)}</dd>`}
       ${c.exceptional?`<dt>الجهة</dt><dd>${esc(c.organizer)}</dd>`:`<dt>المحاضر</dt><dd>${esc(person(c.instructor).name)}</dd><dt>الطلاب</dt><dd>${esc(audName(c))} · ${esc(groupTxt(c))}</dd>`}
       <dt>العدد</dt><dd class="num">${c.students} ← المطلوب ${needed(c)} مقعدًا (زيادة ${S.settings.buffer}%)</dd>
       <dt>طريقة التدريس</dt><dd>${c.exceptional||c.status!=='active'?MODE[c.mode]:`<select data-chg="mode" data-id="${c.id}" aria-label="طريقة التدريس">${Object.entries(MODE).map(([k,t])=>`<option value="${k}"${c.mode===k?' selected':''}>${t}</option>`).join('')}</select>`}</dd>
@@ -1387,6 +1405,7 @@ const ACT={
     if(q.type==='exceptional'){
       const p=q.payload;
       const c={id:nid('k'),exceptional:true,title:p.title,organizer:p.organizer,kind:p.kind,group:'all',instructor:null,cohort:null,students:p.students,day:p.day,slot:p.slot,roomId:null,mode:'inperson',status:'active',reqs:p.reqs,overrides:{}};
+      if(p.date){ const w=Math.floor(daysBetween(S.term.start,p.date)/7)+1; Object.assign(c,{date:p.date,until:p.date,weeks:[w,w]}); } /* one event on one date, not every week */
       S.classes.push(c); q.status='approved'; log('اعتماد طلب',`حجز استثنائي: ${c.title} (${when(c)})`,q.text);
       S.ui.drawer={type:'class',id:c.id}; toast('اختر المكان من الاقتراحات'); return;
     }
