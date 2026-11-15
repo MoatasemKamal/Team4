@@ -404,7 +404,13 @@ const overlapW=(a,b)=>{ const x=wk(a), y=wk(b); return x[0]<=y[1]&&y[0]<=x[1]; }
 const KIND_NOUN={lecture:['محاضرة','محاضرات'],section:['سكشن','سكاشن'],lab:['معمل','معامل']};
 /* "12 محاضرة" / "10 سكاشن": Arabic plural for 3–10, singular otherwise. */
 const countOf=(n,k)=>{ const w=KIND_NOUN[k]||[S.usage[k]||'حصة','حصص']; return `${n} ${n>=3&&n<=10?w[1]:w[0]}`; };
-const weeksText=c=>{ const w=wk(c); return `من الأسبوع ${w[0]} إلى الأسبوع ${w[1]}${c.total?` · ${countOf(c.total,c.kind)}`:''}`; };
+/* Real dates: week w (1 = term start week), day d (0 = السبت). */
+const weekDate=(w,d)=>addDays(weekStart(S.term.start),(w-1)*7+d);
+const shortDate=x=>{ const d=parseD(x); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`; };
+const weekSpan=(a,b)=>`${shortDate(weekDate(a,0))} – ${shortDate(weekDate(b,5))}`;
+/* First and last actual session dates when the day is known; otherwise the calendar span of the weeks. */
+const weeksText=c=>{ const w=wk(c), n=c.total?countOf(c.total,c.kind)+' · ':'';
+  return c.day!=null?`${n}من ${dateLabel(weekDate(w[0],c.day))} إلى ${dateLabel(weekDate(w[1],c.day))} (الأسابيع ${w[0]} إلى ${w[1]})`:`${n}الأسابيع ${w[0]} إلى ${w[1]} (${weekSpan(w[0],w[1])})`; };
 const isMasterCohort=id=>{ const c=cohort(id); return !!(c&&(c.type==='master'||c.type==='pg')); };
 /* Students of a session = its audiences (program + level + major groups) and its group (L1, L1-S2 …).
    Group 1 is the same students in every course of the same audience (assumption, question E4), so two sessions
@@ -799,7 +805,7 @@ function renderRail(){
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${esc((S.university||'جامعة الإسكندرية')+' · '+((S.faculty&&S.faculty.name)||''))}<br>${S.term.name} · موظف التوزيع</small></div>`+
     `<nav aria-label="القائمة" style="display:contents">`+NAV_GROUPS.map(g=>`<div class="nav-group" role="presentation">${g.t}</div>`+g.items.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')).join('')+
     `<a class="nav ext" href="course-management/"><span>إدارة المواد الدراسية</span><span aria-hidden="true">↖</span></a></nav>`+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 15:30</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 16:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -906,16 +912,16 @@ function cmSessionsTable(q){
   const groups=[...new Set(cs.map(lg))];
   const order=c=>(c.kind==='lecture'?0:1)*1000+(c.day==null?99:c.day)*10+(c.slot==null?9:c.slot);
   const kinds=[...new Set(cs.map(c=>c.kind))].map(k=>{ const c=cs.find(x=>x.kind===k), w=wk(c), every=c.total===w[1]-w[0]+1;
-    return `<li><b>ال${(KIND_NOUN[k]||[S.usage[k]])[1]||S.usage[k]}:</b> ${every?'مرة كل أسبوع، ':''}من الأسبوع ${w[0]} إلى الأسبوع ${w[1]} (${countOf(c.total||0,k)} لكل مجموعة)</li>`; }).join('');
+    return `<li><b>ال${(KIND_NOUN[k]||[S.usage[k]])[1]||S.usage[k]}:</b> ${countOf(c.total||0,k)} لكل مجموعة${every?'، مرة كل أسبوع':''}، من الأسبوع ${w[0]} إلى الأسبوع ${w[1]} (${weekSpan(w[0],w[1])})</li>`; }).join('');
   const names=list=>[...new Set(list.filter(c=>c.instructor).map(c=>person(c.instructor).name))].join('، ')||'—';
   const row=c=>{ const fit=c.roomId?currentFit(c):null;
-    const whenCell=c.status==='cancelled'?`<span style="color:var(--bad)">${c.returned?'تعذّر التوزيع':'مرفوض'}</span>`:c.day==null?'<span style="color:var(--bad)">لا يوجد موعد مناسب</span>':esc(when(c));
+    const whenCell=c.status==='cancelled'?`<span style="color:var(--bad)">${c.returned?'تعذّر التوزيع':'مرفوض'}</span>`:c.day==null?'<span style="color:var(--bad)">لا يوجد موعد مناسب</span>':`${esc(when(c))}<div class="meta">من ${shortDate(weekDate(wk(c)[0],c.day))} إلى ${shortDate(weekDate(wk(c)[1],c.day))}</div>`;
     const roomCell=c.status==='cancelled'||c.day==null?'—':c.mode==='online'?'أونلاين':c.roomId?esc(room(c.roomId).name):'<span style="color:var(--bad)">بلا مكان</span>';
     return `<tr><td><b>${esc(groupTxt(c))}</b></td><td class="num">${c.students}</td><td>${whenCell}</td><td>${roomCell}</td><td>${fit?scoreHtml(fit.score):''}</td>
       <td>${q.status==='new'&&c.status!=='cancelled'?`<button class="btn sm ghost" data-act="openClass" data-id="${c.id}" aria-label="تغيير موعد أو مكان ${esc(shortLabel(c))}">تغيير</button>`:''}</td></tr>`; };
   return `<ul class="meta" style="margin:0 0 8px;padding-inline-start:18px">${kinds}</ul>
   <div class="tbl-wrap sess-table"><table><colgroup><col style="width:24%"><col style="width:10%"><col style="width:20%"><col style="width:20%"><col style="width:16%"><col style="width:10%"></colgroup>
-  <thead><tr><th>الحصة</th><th>الطلاب</th><th>الموعد</th><th>المكان</th><th>المناسبة</th><th><span class="sr-only">إجراء</span></th></tr></thead><tbody>
+  <thead><tr><th>الحصة</th><th>الطلاب</th><th>الموعد الأسبوعي</th><th>المكان</th><th>المناسبة</th><th><span class="sr-only">إجراء</span></th></tr></thead><tbody>
     ${groups.map(g=>{ const rows=cs.filter(c=>lg(c)===g).sort((a,b)=>order(a)-order(b)); const lec=rows.filter(c=>c.kind==='lecture'), oth=rows.filter(c=>c.kind!=='lecture');
       const head=`مجموعة المحاضرة ${esc(g.replace(/^L/,''))}${lec.length?` · المحاضرة: ${esc(names(lec))}`:''}${oth.length?` · ${esc([...new Set(oth.map(c=>S.usage[c.kind]))].join(' و'))}: ${esc(names(oth))}`:''}`;
       return `<tr class="sess-group"><td colspan="6">${head}</td></tr>`+rows.map(row).join(''); }).join('')}
@@ -924,7 +930,7 @@ function cmSessionsTable(q){
 function reqCard(q){
   const fromName=q.fromLabel||person(q.from).name; let title='', facts=[], approve='اعتماد', extra='';
   if(q.type==='cm'||q.type==='cm_change'){ const co=course(q.courseId); const cs=q.classIds.map(cls).filter(Boolean); title=`${co.code} · ${co.name}`;
-    if(q.type==='cm'){ facts=[cs[0]?audName(cs[0]):'',`${cs.length} حصة`,cs[0]?weeksText(cs[0]):''].filter(Boolean); approve='اعتماد التوزيع';
+    if(q.type==='cm'){ const ws=cs.map(wk); facts=[cs[0]?audName(cs[0]):'',`${cs.length} حصة`,cs.length?`من ${shortDate(weekDate(Math.min(...ws.map(w=>w[0])),0))} إلى ${shortDate(weekDate(Math.max(...ws.map(w=>w[1])),5))}`:''].filter(Boolean); approve='اعتماد التوزيع';
       const prop=cs.filter(c=>c.status!=='cancelled'&&c.day!=null&&(c.roomId||c.mode==='online')).length, none=cs.filter(c=>c.status!=='cancelled'&&(c.day==null||(!c.roomId&&c.mode!=='online'))).length;
       extra=`<details class="req-sess"${q.status==='new'?' open':''}><summary>الحصص (${cs.length})${q.status==='new'?` · ${pill(`${prop} مقترح`,'acc')}${none?' '+pill(`${none} بلا اقتراح`,'bad'):''}`:''}</summary>${cmSessionsTable(q)}</details>`; }
     else { facts=[`${cs.length} حصة`]; approve='تأكيد وتحرير الأماكن';
@@ -1228,8 +1234,8 @@ function drawerClass(c){
   return `<div class="drawer-head"><div><div class="meta">${c.exceptional?'حجز استثنائي':esc(co.code)}</div><h3 id="dr-t">${esc(label(c))}</h3><div style="margin-top:4px">${clsPill(c)}</div></div><button class="btn ghost" data-act="closeDrawer" aria-label="إغلاق">إغلاق</button></div>
   <div class="drawer-body" id="drawer-body">
     <dl class="kv">
-      <dt>الموعد</dt><dd>${c.day==null&&c.status==='active'?timePicker(c):c.pending?`<b>${when(c)}</b> <span class="meta">(مقترح)</span>${timePicker(c,'غيّر الموعد')}`:when(c)}</dd>
-      <dt>المدة</dt><dd>${weeksText(c)}</dd>
+      <dt>الموعد الأسبوعي</dt><dd>${c.day==null&&c.status==='active'?timePicker(c):c.pending?`<b>${when(c)}</b> <span class="meta">(مقترح)</span>${timePicker(c,'غيّر الموعد')}`:when(c)}</dd>
+      <dt>التواريخ</dt><dd>${weeksText(c)}</dd>
       ${c.exceptional?`<dt>الجهة</dt><dd>${esc(c.organizer)}</dd>`:`<dt>المحاضر</dt><dd>${esc(person(c.instructor).name)}</dd><dt>الطلاب</dt><dd>${esc(audName(c))} · ${esc(groupTxt(c))}</dd>`}
       <dt>العدد</dt><dd class="num">${c.students} ← المطلوب ${needed(c)} مقعدًا (زيادة ${S.settings.buffer}%)</dd>
       <dt>طريقة التدريس</dt><dd>${c.exceptional||c.status!=='active'?MODE[c.mode]:`<select data-chg="mode" data-id="${c.id}" aria-label="طريقة التدريس">${Object.entries(MODE).map(([k,t])=>`<option value="${k}"${c.mode===k?' selected':''}>${t}</option>`).join('')}</select>`}</dd>
