@@ -479,7 +479,7 @@ function freedCheck(roomId,day,slot,cause){
   if(['maintenance','closed'].includes(roomState(r))) return;
   if(S.notifications.some(n=>n.open&&n.type==='freed'&&n.roomId===roomId&&n.day===day&&n.slot===slot)) return;
   if(!freedCandidates(roomId,day,slot).length){
-    if(cause.loud) S.notifications.unshift({id:nid('n'),type:'info',open:true,at:stamp(),title:`${r.name} أصبحت شاغرة ${DAYS[day]} ${SLOTS[slot]}`,text:`${cause.text}. لا توجد مواد تحتاجها في الموعد نفسه حاليًا.`});
+    if(cause.loud) S.notifications.unshift({id:nid('n'),type:'info',open:true,at:stamp(),title:`${r.name} أصبحت متاحة ${DAYS[day]} ${SLOTS[slot]}`,text:`${cause.text}. لا توجد مواد تحتاجها في الموعد نفسه حاليًا.`});
     return;
   }
   S.notifications.unshift({id:nid('n'),type:'freed',open:true,at:stamp(),roomId,day,slot,cause:cause.text});
@@ -555,7 +555,7 @@ function slotOption(c,origDate,date,slot){
       if(roomBlockedOn(r,date)||others.some(x=>x.roomId===r.id)) return null;
       const e=evaluate(r,c,{ignoreTime:true,ignoreStatus:true}); return e.ok?{r,e}:null;
     }).filter(Boolean).sort((a,b)=>b.e.score-a.e.score);
-    if(rooms.length){ opt.room=rooms[0].r; opt.e=rooms[0].e; } else opt.problems.push('لا يوجد مكان مناسب شاغر');
+    if(rooms.length){ opt.room=rooms[0].r; opt.e=rooms[0].e; } else opt.problems.push('لا يوجد مكان مناسب متاح');
   }
   if(audOf(c).length){
     const busyDay=SLOTS.some((_,s)=>sessionsOn(date,s).some(x=>x.c.id!==c.id&&audOf(x.c).some(a=>audOf(c).includes(a))));
@@ -762,7 +762,7 @@ function renderRail(){
   $('#rail').innerHTML=`<div class="brand"><h1>إدارة القاعات والمعامل</h1><small>${esc((S.university||'جامعة الإسكندرية')+' · '+((S.faculty&&S.faculty.name)||''))}<br>${S.term.name} · موظف التوزيع</small></div>`+
     `<nav aria-label="القائمة" style="display:contents">`+NAV_GROUPS.map(g=>`<div class="nav-group" role="presentation">${g.t}</div>`+g.items.map(([k,t])=>`<a class="nav${S.ui.view===k?' on':''}" href="#${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badges[k]?`<span class="badge">${badges[k]}</span>`:''}</a>`).join('')).join('')+
     `<a class="nav ext" href="course-management/"><span>إدارة المواد الدراسية</span><span aria-hidden="true">↖</span></a></nav>`+
-    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 14 نوفمبر 23:30</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
+    `<div class="rail-foot">${S.cmLast?`<span class="pill ok">متصل بنظام إدارة المواد</span><span>آخر تحديث: ${esc(S.cmLast)}</span>`:`<span class="pill off">نظام إدارة المواد غير متصل</span><span>افتح إدارة المواد من الموقع نفسه لربط النظامين.</span>`}<span>نموذج أولي ببيانات تجريبية محفوظة في هذا المتصفح.</span><span class="num">النسخة: 15 نوفمبر 10:00</span><button class="btn sm" data-act="reset">استعادة البيانات التجريبية</button></div>`;
 }
 
 function viewDashboard(){
@@ -800,7 +800,7 @@ function viewDashboard(){
 }
 function classMiniCard(c,stripe,extra){
   const rec=c.mode!=='online'?recommend(c).ok:[];
-  const why=!c.roomId&&!rec.length?'لا يوجد مكان مناسب شاغر في هذا الموعد.':(!c.roomId?`أنسب اقتراح: ${rec[0].r.name} (${rec[0].e.score}%)`:'');
+  const why=!c.roomId&&!rec.length?'لا يوجد مكان مناسب متاح في هذا الموعد.':(!c.roomId?`أنسب اقتراح: ${rec[0].r.name} (${rec[0].e.score}%)`:'');
   return `<div class="card ${stripe}"><div class="card-head"><div><h4>${esc(label(c))}</h4><div class="meta">${when(c)} · ${c.students} طالب${c.displaced?` · أُزيلت من ${esc(c.displaced)}`:''}</div>${extra?`<div class="meta" style="color:var(--warn)">${esc(extra)}</div>`:''}${why?`<div class="meta">${esc(why)}</div>`:''}</div><button class="btn sm" data-act="openClass" data-id="${c.id}">الاقتراحات</button></div></div>`;
 }
 function noteCard(n){
@@ -812,11 +812,11 @@ function noteCard(n){
     const list=n.classIds.map(cls).filter(Boolean);
     return `<div class="card stripe-warn"><div class="card-head"><div>${pill('مواد متأثرة','warn')} <h4 style="display:inline">${esc(n.title)}</h4><div class="meta">${esc(n.at)}</div></div><button class="btn sm ghost" data-act="dismiss" data-id="${n.id}">إخفاء</button></div>
     ${list.map(c=>{ const top=c.status==='active'&&c.mode!=='online'&&c.day!=null?recommend(c).ok.find(x=>x.r.id!==c.roomId):null; const fit=c.roomId?currentFit(c):null;
-      return `<div class="cand"><div><b>${esc(label(c))}</b><div class="meta">${when(c)} · ${c.roomId?'حاليًا '+esc(room(c.roomId).name)+(fit&&!fit.ok?' ('+esc(fit.reason)+')':''):'بدون مكان'} · ${clsPill(c)}</div>${top?`<div class="meta">اقتراح النظام: <b>${esc(top.r.name)}</b> ${scoreHtml(top.e.score)}</div>`:c.status==='active'&&c.mode!=='online'?'<div class="meta" style="color:var(--bad)">لا يوجد بديل مناسب شاغر</div>':''}</div>
+      return `<div class="cand"><div><b>${esc(label(c))}</b><div class="meta">${when(c)} · ${c.roomId?'حاليًا '+esc(room(c.roomId).name)+(fit&&!fit.ok?' ('+esc(fit.reason)+')':''):'بدون مكان'} · ${clsPill(c)}</div>${top?`<div class="meta">اقتراح النظام: <b>${esc(top.r.name)}</b> ${scoreHtml(top.e.score)}</div>`:c.status==='active'&&c.mode!=='online'?'<div class="meta" style="color:var(--bad)">لا يوجد بديل مناسب متاح</div>':''}</div>
       <div class="row-actions">${top?`<button class="btn sm primary" data-act="assign" data-c="${c.id}" data-r="${top.r.id}">أكّد النقل لـ ${esc(top.r.name)}</button>`:''}<button class="btn sm" data-act="openClass" data-id="${c.id}">بدائل أخرى</button></div></div>`; }).join('')}</div>`;
   }
   const r=room(n.roomId); const cands=freedCandidates(n.roomId,n.day,n.slot);
-  return `<div class="card stripe-acc"><div class="card-head"><div>${pill('مكان شاغر','acc')} <h4 style="display:inline">${esc(r.name)} — ${DAYS[n.day]} ${SLOTS[n.slot]}</h4><div class="meta">${esc(n.cause)} · ${esc(n.at)}</div><div class="meta">${roomWhere(r)} · ${capsSummary(r)}</div></div><button class="btn sm ghost" data-act="dismiss" data-id="${n.id}">تجاهل</button></div>
+  return `<div class="card stripe-acc"><div class="card-head"><div>${pill('مكان متاح','acc')} <h4 style="display:inline">${esc(r.name)} — ${DAYS[n.day]} ${SLOTS[n.slot]}</h4><div class="meta">${esc(n.cause)} · ${esc(n.at)}</div><div class="meta">${roomWhere(r)} · ${capsSummary(r)}</div></div><button class="btn sm ghost" data-act="dismiss" data-id="${n.id}">تجاهل</button></div>
   ${cands.length?cands.map(x=>`<div class="cand"><div><b>${esc(label(x.c))}</b> ${x.kind==='waiting'?pill('في الانتظار','bad'):pill(`تحسين · حاليًا في ${room(x.from).name} ${x.curOk?x.curScore+'%':'(غير مناسب)'}`,'warn')}
     <div class="meta">${x.c.students} طالب ← المطلوب ${x.e.need} من ${x.e.cap.max} · ${scoreHtml(x.e.score)}</div><div>${evalTags(x.e)}</div></div>
     <div class="row-actions"><button class="btn sm primary" data-act="assign" data-c="${x.c.id}" data-r="${r.id}">${x.kind==='waiting'?'احجزها هنا':'انقلها إلى هنا'}</button><button class="btn sm ghost" data-act="openClass" data-id="${x.c.id}">التفاصيل</button></div></div>`).join(''):'<div class="empty">لا توجد مواد تحتاج إلى هذا المكان حاليًا.</div>'}
@@ -972,7 +972,7 @@ function drawerBook(c){
   <div class="drawer-body" id="drawer-body">
     ${c.reqs.length?`<div class="meta">المتطلبات: ${c.reqs.map(q=>EQ[q.eq]+(q.mandatory?' (إلزامي)':'')).join('، ')}</div>`:''}
     ${c.note?`<div class="infobox">${esc(c.note)}</div>`:''}
-    <section><div class="sec-title">الأماكن المتاحة والمناسبة (${o.ok.length})</div><div class="card">${o.ok.length?o.ok.map(({r,e})=>`<div class="cand"><div><b>${esc(r.name)}</b> <span class="meta">${roomWhere(r)}</span><div class="meta">السعة ${e.cap.min}–${e.cap.max} · المطلوب ${e.need} · ${scoreHtml(e.score)}</div><div>${evalTags(e)||'<span class="tag">كل المتطلبات موجودة</span>'}</div></div><button class="btn sm primary" data-act="confirmBook" data-r="${r.id}">احجز هنا</button></div>`).join(''):'<div class="empty">لا يوجد مكان مناسب شاغر في هذا الموعد. جرّب فترة أو يومًا آخر.</div>'}</div>
+    <section><div class="sec-title">الأماكن المتاحة والمناسبة (${o.ok.length})</div><div class="card">${o.ok.length?o.ok.map(({r,e})=>`<div class="cand"><div><b>${esc(r.name)}</b> <span class="meta">${roomWhere(r)}</span><div class="meta">السعة ${e.cap.min}–${e.cap.max} · المطلوب ${e.need} · ${scoreHtml(e.score)}</div><div>${evalTags(e)||'<span class="tag">كل المتطلبات موجودة</span>'}</div></div><button class="btn sm primary" data-act="confirmBook" data-r="${r.id}">احجز هنا</button></div>`).join(''):'<div class="empty">لا يوجد مكان مناسب متاح في هذا الموعد. جرّب فترة أو يومًا آخر.</div>'}</div>
     <details style="margin-top:8px"><summary>أماكن مستبعدة وسبب الاستبعاد (${o.no.length})</summary><div class="card" style="margin-top:6px">${o.no.map(({r,e})=>`<div class="cand"><div><b>${esc(r.name)}</b><div class="meta">${esc(e.reason)}</div></div></div>`).join('')}</div></details></section>
     <div class="row-actions"><button class="btn" data-act="manualBook" data-edit="1">تعديل بيانات الحجز</button></div>
   </div>`;
@@ -1147,7 +1147,7 @@ function drawerClass(c){
     ${S.oneoffs.some(o=>o.classId===c.id)?`<section><div class="sec-title">تغييرات لمرة واحدة</div><div class="card">${S.oneoffs.filter(o=>o.classId===c.id).map(o=>`<div class="req"><span>${dateLabel(o.date)}: ${o.type==='cancel'?'ملغية':`نُقلت إلى ${dateLabel(o.newDate)} ${SLOTS[o.newSlot]}${o.roomId?' في '+esc(room(o.roomId).name):''}`}</span><span></span>${o.reason?`<small>${esc(o.reason)}</small>`:''}</div>`).join('')}</div></section>`:''}
     ${c.status==='active'?`<div class="row-actions">${c.roomId?`<button class="btn sm" data-act="unassign" data-id="${c.id}">إزالة المكان (تعود إلى الانتظار)</button>`:''}${c.exceptional?`<button class="btn sm danger" data-act="cancelTerm" data-id="${c.id}">إلغاء الحجز</button>`:`<button class="btn sm danger" data-act="cancelTerm" data-id="${c.id}">إلغاء الحصة للترم</button>`}</div>`:''}
     ${rec?`<section><div class="sec-title">اقتراحات الأماكن (${rec.ok.length} مناسب)</div><div class="card">${rec.ok.length?rec.ok.map(({r,e})=>`<div class="cand"><div><b>${esc(r.name)}</b> <span class="meta">${roomWhere(r)}</span>${c.roomId===r.id?' '+pill('الحالي','acc'):''}<div class="meta">السعة ${e.cap.min}–${e.cap.max} · المطلوب ${e.need} · ${scoreHtml(e.score)}</div><div>${evalTags(e)||'<span class="tag">كل المتطلبات موجودة</span>'}</div></div>
-      ${c.roomId===r.id?'':`<button class="btn sm primary" data-act="assign" data-c="${c.id}" data-r="${r.id}">${c.roomId?'انقلها إلى هنا':'احجز'}</button>`}</div>`).join(''):'<div class="empty">لا يوجد مكان مناسب شاغر في هذا الموعد. ستبقى المادة في الانتظار، وسيصلك إشعار فور توفر مكان مناسب.</div>'}</div>
+      ${c.roomId===r.id?'':`<button class="btn sm primary" data-act="assign" data-c="${c.id}" data-r="${r.id}">${c.roomId?'انقلها إلى هنا':'احجز'}</button>`}</div>`).join(''):'<div class="empty">لا يوجد مكان مناسب متاح في هذا الموعد. ستبقى المادة في الانتظار، وسيصلك إشعار فور توفر مكان مناسب.</div>'}</div>
       <details style="margin-top:8px"><summary>أماكن مستبعدة وسبب الاستبعاد (${rec.no.length})</summary><div class="card" style="margin-top:6px">${rec.no.map(({r,e})=>`<div class="cand"><div><b>${esc(r.name)}</b><div class="meta">${esc(e.reason)}</div></div></div>`).join('')}</div></details></section>`:''}
   </div>`;
 }
@@ -1217,7 +1217,7 @@ const ACT={
   },
   async unassign(d){
     const c=cls(d.id);
-    const v=await ask({title:'إزالة المكان',body:`<p class="meta">ستعود ${esc(label(c))} إلى قائمة الانتظار، وسيصبح ${esc(room(c.roomId).name)} شاغرًا.</p>`,fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'إزالة المكان'});
+    const v=await ask({title:'إزالة المكان',body:`<p class="meta">ستعود ${esc(label(c))} إلى قائمة الانتظار، وسيصبح ${esc(room(c.roomId).name)} متاحًا.</p>`,fields:[{id:'reason',label:'السبب',type:'textarea',required:true}],ok:'إزالة المكان'});
     if(!v) return;
     const old=room(c.roomId).name; log('إزالة مكان',`${label(c)} (${when(c)}) من ${old}`,v.reason);
     releaseRoom(c,`أُزيلت منها ${label(c)}`); render(); toast('عادت المادة إلى الانتظار');
@@ -1258,13 +1258,13 @@ const ACT={
     if(q.type==='online'){
       const c=cls(q.classId); c.mode='online'; q.status='approved';
       log('اعتماد طلب',`تحويل ${label(c)} أونلاين للترم`,q.text); notifyPeople(c,`${label(c)} أصبحت أونلاين`);
-      releaseRoom(c,`${label(c)} حُوّلت إلى أونلاين`); go('requests'); render(); toast('تم التحويل إلى أونلاين. راجع إشعار المكان الذي أصبح شاغرًا.'); return;
+      releaseRoom(c,`${label(c)} حُوّلت إلى أونلاين`); go('requests'); render(); toast('تم التحويل إلى أونلاين. راجع إشعار المكان الذي أصبح متاحًا.'); return;
     }
     if(q.type==='cancel_once'){
       const c=cls(q.classId); q.status='approved';
       S.oneoffs.push({id:nid('o'),type:'cancel',classId:c.id,date:q.onDate,reason:q.text,requestId:q.id});
       log('اعتماد طلب',`إلغاء ${label(c)} ${q.when} فقط`,q.text); notifyPeople(c,`${label(c)} ملغية ${q.when}`);
-      if(c.roomId) S.notifications.unshift({id:nid('n'),type:'info',open:true,at:stamp(),title:`${room(c.roomId).name} شاغرة ${q.when} ${SLOTS[c.slot]}`,text:'متاحة للحجز الاستثنائي فقط (محاضرة تعويضية أو مناقشة)، ولن يتغير الجدول الأسبوعي.'});
+      if(c.roomId) S.notifications.unshift({id:nid('n'),type:'info',open:true,at:stamp(),title:`${room(c.roomId).name} متاحة ${q.when} ${SLOTS[c.slot]}`,text:'متاحة للحجز الاستثنائي فقط (محاضرة تعويضية أو مناقشة)، ولن يتغير الجدول الأسبوعي.'});
       toast('تم تسجيل الإلغاء لهذه المرة فقط'); return;
     }
     if(q.type==='maintenance'){
@@ -1299,7 +1299,7 @@ const ACT={
     for(const id of q.classIds){
       const c=cls(id), o=oneoffFor(id,q.targetDate);
       notifyPeople(c,`${label(c)}: محاضرة ${dateLabel(q.targetDate)} نُقلت إلى ${dateLabel(o.newDate)} ${SLOTS[o.newSlot]}${o.roomId?' في '+room(o.roomId).name:''}`);
-      if(c.roomId&&c.mode!=='online') S.notifications.unshift({id:nid('n'),type:'info',open:true,at:stamp(),title:`${room(c.roomId).name} شاغرة ${dateLabel(q.targetDate)} ${SLOTS[c.slot]}`,text:`نُقلت ${label(c)} هذه المرة. المكان متاح للحجز الاستثنائي فقط (تعويضي أو مناقشة).`});
+      if(c.roomId&&c.mode!=='online') S.notifications.unshift({id:nid('n'),type:'info',open:true,at:stamp(),title:`${room(c.roomId).name} متاحة ${dateLabel(q.targetDate)} ${SLOTS[c.slot]}`,text:`نُقلت ${label(c)} هذه المرة. المكان متاح للحجز الاستثنائي فقط (تعويضي أو مناقشة).`});
     }
     log('اعتماد طلب',`نقل محاضرات ${person(q.from).name} يوم ${dateLabel(q.targetDate)} (${q.classIds.length})`,q.text);
     S.ui.calWeek=weekStart(q.targetDate); toast('اعتُمد الطلب وأُرسل إشعار إلى الطلاب. راجع التقويم.');
